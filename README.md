@@ -1,50 +1,194 @@
-# Free AI Hub 63 v0.1.0
+# Free AI Hub 63 v0.4.0
 
-A private, password-protected PHP 8.2+ dashboard built from the strongest ideas in the two supplied AI dashboard examples and the modular structure of the supplied `remote-app` project.
+A private, password-protected PHP 8+ AI workspace for `ai.63.lv`. It combines free/local AI routing, multilingual chat, universal smart search, image/video generation, project/WordPress ZIP generation and temporary file storage without forcing a monthly AI subscription.
 
-## What is included
+## v0.3.0 highlights
 
-- Multi-provider AI chat with automatic failover and provider cooldowns after rate-limit errors.
-- Providers: **Ollama Local**, **Groq**, **Google Gemini**, **OpenRouter free models**, optional **Ollama Cloud**, optional **Pollinations**, plus one custom OpenAI-compatible endpoint.
-- Provider status shows Ready / Needs key / Cooldown / Disabled.
-- Smart web search with three routes: optional Ollama Web Search free tier, optional SearXNG instance, and a no-key DuckDuckGo HTML fallback.
-- Marketplace/car search presets for **Latvia, Germany, United Kingdom, Lithuania and Estonia**.
-- Search results are deduplicated and displayed in a table with source URL, detected price/currency/year/mileage and country.
-- Optional AI normalization is constrained to source titles/snippets; missing facts stay blank.
-- Search report download as **HTML, JSON and PDF**.
-- Image generation through Pollinations (API key/credits) or a local Stable Diffusion / Forge WebUI API.
-- App/website starter ZIPs for **React + TypeScript + Vite**, **Svelte + Vite**, **Alpine.js + AJAX/fetch**, PHP, WordPress plugins and WordPress themes.
-- AI-generated project ZIPs when a text provider is available; clean starter ZIP fallback when it is not.
-- File manager with **1 GB maximum upload/download**.
-- Automatic deletion of uploads, generated files, reports and cache after **48 hours**.
-- Manual "Clean expired now" button plus CLI cleanup script.
-- Protected server-side settings, CSRF protection, private session cookie, noindex headers and protected `storage/`.
+- **AI Chat is the first page after login.**
+- New clean **light UI is the default**; dark mode is optional from the top bar and Settings.
+- Full interface + chat language support for:
+  - English
+  - Latvian, Lithuanian, Estonian
+  - Swedish, Norwegian, Danish, Finnish, Icelandic
+  - Polish, Russian, Ukrainian
+  - Spanish, French, German
+- hCaptcha remains **optional**. If enabled, its `hl` language always follows the active interface language; English is the default on a fresh install.
+- Settings now show **Connect / Setup / Get key / Test** actions for providers instead of expecting users to know where credentials come from.
+- Added **Hugging Face Inference Providers** and **Mistral API Free mode**.
+- Added visible local model presets for **Llama 3.x (Meta), Gemma (Google), Mistral 7B, DeepSeek and Qwen** through Ollama/local OpenAI-compatible runtimes.
+- Existing **Groq**, **Gemini**, **OpenRouter**, **Ollama Cloud**, **Puter**, local engines and custom endpoints remain available.
+- **React / Next.js + TypeScript + Node.js route handlers + Supabase** is now a first-class app-generator stack.
+- Media Studio supports **Puter text-to-image and text-to-video** in the browser with no developer API key, plus local Stable Diffusion/Forge and optional Pollinations.
+- Smart Search no longer asks for a search “type”. It uses **country multiselect with All countries selected by default** and combines all configured search resources.
+- Search country set now includes Latvia, Lithuania, Estonia, United Kingdom, Germany, Sweden, Norway, Denmark, Finland, Iceland, Poland, France, Spain, Ukraine and Russia.
+- Smart Search can combine:
+  - DuckDuckGo HTML fallback - no key
+  - SearXNG - optional/self-hosted
+  - Ollama Web Search - optional account key
+  - Google Gemini grounding with Google Search when Gemini is configured
+  - Groq Browser Search research notes when a supported GPT-OSS model/key is configured
+  - AI structuring/summarisation through the normal failover router
+  - Puter browser-side summary fallback when no server AI provider answers
+- Search reports include sources plus AI/research notes and export as HTML, JSON and PDF.
 
-## Important 2026 provider notes
+## AI providers
 
-This build deliberately does **not** pretend that consumer ChatGPT, Claude, Kimi or Grok web pages are hidden free APIs. Browser subscriptions/web chat sessions should not be scraped or reused as an unofficial API. The dashboard uses local models or official provider endpoints/free tiers instead.
+### No developer cloud API key required
 
-`GitHub Models` is not included because GitHub retired its playground, model catalog and inference API on **30 July 2026**. If you have older code that points to GitHub Models, remove it or replace it with another provider.
+- **Puter AI** - runs through Puter.js in the browser. The user signs in to Puter and uses their own allowance/account quota. Puter exposes many model vendors and also image/video AI.
+- **Browser AI / WebLLM** - local model in a WebGPU-capable browser.
+- **Ollama Local** - local/self-hosted open models.
+- **LM Studio Local** - OpenAI-compatible local server.
+- **llama.cpp Local** - OpenAI-compatible local server.
+- **LocalAI Local** - self-hosted OpenAI-compatible server.
+- **Custom OpenAI-compatible** - key is optional, so another local/free endpoint can be connected.
 
-Pollinations is included only as an optional authenticated provider. Current Pollinations generation endpoints use API keys/credits, so it is **not** labelled "unlimited/no-key" here.
+### Optional free/free-credit account keys
 
-Free tiers change frequently. The app therefore treats provider order/models/URLs as settings instead of hard-coding promises about unlimited usage.
+- **Groq** - free/developer account limits; default `openai/gpt-oss-20b`.
+- **Google Gemini** - free tier where available; default `gemini-3.8-flash`.
+- **OpenRouter** - `openrouter/free` routes to currently available free models; account key required.
+- **Hugging Face Inference Providers** - free account credits; OpenAI-compatible router endpoint.
+- **Mistral API** - Free mode with limited usage/rate limits; default `mistral-small-latest`.
+- **Ollama Cloud** - optional account key.
+- **Pollinations** - optional authenticated/credit provider; not labelled unlimited/no-key.
 
-## Installation
+The server router skips missing optional keys, handles HTTP 429 cooldowns, and moves to the next provider. Client-side Puter/WebLLM are then available as no-developer-key fallbacks.
 
-Requirements:
+## Open model presets
 
-- Apache or Nginx
-- PHP **8.2+**
-- PHP 8.2+ with JSON. `curl`, `dom` and `mbstring` are recommended; HTTP falls back to PHP streams when cURL is unavailable. ZIP generation uses `ZipArchive` when available and falls back to `PharData`.
-- HTTPS strongly recommended
-- `storage/` writable by PHP
+Settings includes one-click local presets:
 
-Upload the complete folder to the web root, for example `https://ai.63.lv/`.
+```text
+Llama 3.x (Meta)  -> llama3.2:3b
+Gemma (Google)    -> gemma3:4b
+Mistral 7B        -> mistral:7b
+DeepSeek          -> deepseek-r1:8b
+Qwen              -> qwen3:8b
+```
 
-The requested initial password is already stored as a bcrypt hash in `config.example.php`. Sign in with the password you specified for this build, then change it in **Settings**. The password itself is never stored in `storage/settings.json` as plaintext.
+The UI also shows the matching `ollama pull ...` command. Model IDs are editable because local model catalogues change frequently.
 
-### 1 GB uploads
+## Connect buttons / external resources
+
+Provider rows have the appropriate action:
+
+- Puter: real browser sign-in/connect button
+- Browser WebLLM: load/test locally
+- Ollama / LM Studio / llama.cpp / LocalAI: setup link + endpoint test
+- Groq / Gemini / OpenRouter / Hugging Face / Mistral: direct link to create a free/account token + server-side test
+- Other configured providers: connect/setup link when available
+
+Settings also links to Microsoft Copilot Studio, GitHub Copilot, Supabase and Hugging Face resources. **Microsoft/GitHub Copilot consumer/IDE sessions are not treated as hidden free inference APIs.** Microsoft Copilot Studio may have trials/licensing, so it is offered as a setup resource rather than a fake “free unlimited” router provider.
+
+## Multilingual behaviour
+
+The active language is stored in a cookie and can be switched from login or any logged-in page. A fresh install defaults to English.
+
+The selected language controls:
+
+- navigation and page labels
+- settings/actions/status messages
+- login and installation instructions
+- hCaptcha widget language when hCaptcha is enabled
+- AI Chat response language
+- Smart Search AI summary language
+- country names in modern browsers through `Intl.DisplayNames`
+
+Supported interface codes: `en`, `lv`, `lt`, `et`, `sv`, `no`, `da`, `fi`, `is`, `pl`, `ru`, `uk`, `es`, `fr`, `de`.
+
+## Optional hCaptcha
+
+hCaptcha is **disabled by default**. Password-only login works with no hCaptcha configuration.
+
+To enable it:
+
+1. Open **Settings > Security**.
+2. Enable hCaptcha.
+3. Add Site Key and Secret.
+4. Save.
+
+The login page loads hCaptcha as `...?hl=<active-language>`. There is no separate hCaptcha language setting that can get out of sync with the interface.
+
+
+## v0.4 task-aware AI routing
+
+Puter is used as a **multi-model gateway**, not as one fixed `gpt-5-nano` chatbot. After **Connect Puter**, the app loads the current Puter model catalog and lets you select a model manually or keep **Auto - best for task**. Auto routing prefers different current models for normal chat, code/WordPress, research and comparison. Compare mode can ask multiple independent models/providers and synthesize the result.
+
+Image and video requests are routed to media generation (`puter.ai.txt2img` / `puter.ai.txt2vid`) instead of a text model. This fixes the old behaviour where a text model could reply “I can’t render an image here”. Media Studio can also use local Stable Diffusion / Forge, with optional Pollinations where configured.
+
+Puter uses the signed-in Puter user's own current allowance/quota; no developer API key is required by this app. Model/provider availability can change, so the UI discovers live models where possible.
+
+## Universal sector Smart Search
+
+Smart Search is not limited to cars. **All sectors** is selected by default, or choose one/more sectors such as vehicles, property, jobs, services, web/digital agencies, electronics, IT, phones, home/garden, construction, agriculture, transport, animals, fashion, business, leisure, education, or health/beauty.
+
+The query builder combines broad web search with optional country/sector marketplace hints. For Latvia this includes `ss.lv` / `ss.com` for broad classifieds, while still searching other indexed sites. Results are deduplicated and AI may only structure facts that are explicitly present in the returned source title/snippet.
+
+Search reports export to a redesigned HTML/PDF layout with query, selected sectors/countries, search resources, AI summary/research notes, readable result cards and source links.
+
+## Smart Search
+
+There is one universal search flow instead of separate “cars / agency / general / Google AI” modes.
+
+1. Enter a natural-language request.
+2. Leave **All countries** selected, or select specific countries.
+3. Optionally use structured fields such as make/model/price/year.
+4. The server queries every configured search resource that is available.
+5. URLs are deduplicated.
+6. Source titles/snippets are parsed for structured values.
+7. AI may organise/summarise those sourced results but is instructed not to invent missing values.
+8. Download the result as HTML, PDF or JSON.
+
+For vehicle-like searches the app adds useful marketplace-domain hints per country, but it does not bypass marketplace logins/CAPTCHAs or scrape private pages directly.
+
+### Search providers
+
+- **DuckDuckGo HTML**: no key fallback. Some hosts/networks can block it.
+- **SearXNG**: recommended self-hosted/open metasearch connection. Public instances can disable JSON output.
+- **Ollama Web Search**: optional key.
+- **Gemini Google Search grounding**: automatically participates when Gemini is enabled and has a key.
+- **Groq Browser Search**: automatically adds a cited research note when Groq is enabled with a supported GPT-OSS model/key.
+
+Search is cached for 10 minutes to avoid unnecessary repeated requests.
+
+## Media Studio
+
+### Puter
+
+Puter is the main no-developer-key browser option:
+
+- text → image
+- text → video
+- broad chat model catalogue
+
+The browser may ask the user to sign in to Puter. Usage follows that user account’s current allowance/quota.
+
+### Local image generation
+
+Set a Stable Diffusion WebUI/Forge URL in Settings and select the local provider. The PHP server calls `/sdapi/v1/txt2img`.
+
+### Pollinations
+
+Available as an optional authenticated provider when you supply a current valid key/credits.
+
+## App & WordPress Builder
+
+Available project types:
+
+- **React / Next.js + TypeScript + Node.js + Supabase**
+- React + TypeScript + Vite
+- Svelte + Vite
+- Alpine.js + AJAX/fetch
+- WordPress plugin
+- WordPress theme
+- PHP app
+
+If a server AI provider is available it can generate project files. If server AI is unavailable and Puter is connected, the browser can ask Puter to create the files and then send the generated file manifest back to PHP for safe ZIP packaging. A deterministic clean starter ZIP remains the final fallback.
+
+## 1 GB upload/download
+
+Application limit: **1 GB per file**.
 
 The package includes `.user.ini`:
 
@@ -55,142 +199,86 @@ max_execution_time = 600
 max_input_time = 600
 ```
 
-Your hosting layer can still impose a smaller limit.
-
-For Nginx, the host configuration may also need:
+Your web server/hosting panel can still impose a lower limit. Nginx may additionally require:
 
 ```nginx
 client_max_body_size 1024m;
 ```
 
-For managed hosting, increase the PHP upload/post limits in the hosting control panel if `.user.ini` is ignored.
+Downloads are streamed instead of loading the whole file into PHP memory.
 
-Downloads are streamed in chunks and are not loaded into PHP memory all at once.
+## 48-hour temporary storage
 
-## 48-hour cleanup
+Temporary uploads, generated files, reports and cache are automatically removed after **48 hours**. Settings/provider state are excluded.
 
-The application opportunistically checks cleanup every 15 minutes during normal requests. It removes temporary files older than 48 hours from:
-
-- `storage/uploads/`
-- `storage/generated/`
-- `storage/reports/`
-- `storage/cache/`
-
-Settings and provider state are never part of automatic cleanup.
-
-For reliable cleanup even when nobody visits the site, run this cron job hourly:
+The app performs opportunistic cleanup during requests. For reliable cleanup even when the site is idle, run hourly:
 
 ```cron
 17 * * * * /usr/bin/php /path/to/ai-free-hub/cleanup.php >/dev/null 2>&1
 ```
 
-## AI provider setup
+Files & Storage also has a manual cleanup button.
 
-Open **Settings** and add only the providers you want.
+## PWA / favicon / Android / Apple
 
-### Ollama Local - best zero-subscription fallback
+Included:
 
-Install Ollama on a machine reachable by the PHP server and run a model. Default endpoint:
+- favicon SVG + PNG
+- Apple Touch icon
+- Android 192/512 icons
+- `manifest.webmanifest`
+- `service-worker.js`
+- install controls below login
 
-`http://127.0.0.1:11434/v1/chat/completions`
+Android uses the browser install prompt when available. On iPhone/iPad use Safari → Share → Add to Home Screen.
 
-Default model in this package: `qwen3:8b`. Change it to any locally installed model.
+## Installation
 
-If PHP and Ollama are on different machines, secure the connection; do not expose an unauthenticated Ollama port directly to the public internet.
+Requirements:
 
-### Groq
+- PHP 8.0+ with JSON
+- Apache or Nginx
+- writable `storage/`
+- HTTPS strongly recommended
+- cURL/DOM/mbstring recommended, but the app includes fallbacks where practical
+- ZIP creation uses `ZipArchive` when available and `PharData` fallback otherwise
 
-Add a free Groq API key. When Groq returns HTTP 429, the dashboard reads `Retry-After`/rate-limit headers when available, marks Groq in cooldown and automatically tries the next provider.
+Upload the folder contents to the domain web root.
 
-### Gemini
+The requested initial password is stored only as a bcrypt hash in `config.example.php`. Sign in using the password chosen for this project, then change it in Settings. It is never saved as plaintext in `storage/settings.json`.
 
-Add a Gemini Developer API key from Google AI Studio. The default is `gemini-3.8-flash`, which currently has a free tier; quotas still depend on account/region and can change.
+### Upgrade from v0.1/v0.2
 
-### OpenRouter
-
-Add an OpenRouter key. The default model is `openrouter/free`, which lets OpenRouter route to a currently available free model. Free-plan daily/rate limits still apply.
-
-### Ollama Cloud
-
-Optional. Add an Ollama account API key and enable the provider.
-
-### Pollinations
-
-Optional. Add a Pollinations server-side key/credit balance. The key is stored server-side only.
-
-### Custom OpenAI-compatible
-
-Use this for another local/free service that accepts OpenAI Chat Completions format. Set its URL, model and optional key.
-
-## Search setup
-
-The search engine priority is:
-
-1. Ollama Web Search if its key is configured.
-2. SearXNG if you provide a SearXNG base URL that allows JSON search responses.
-3. DuckDuckGo HTML fallback with no API key.
-
-SearXNG is recommended for a reliable long-term deployment because you can self-host it, enable the engines you want and control the search API. Public SearXNG instances may disable JSON output.
-
-### Car marketplace presets
-
-The included domain packs are deliberately query-based instead of brittle direct scrapers:
-
-- LV: `ss.com`, `auto24.lv`
-- DE: `mobile.de`, `autoscout24.de`, `kleinanzeigen.de`
-- UK: `autotrader.co.uk`, `motors.co.uk`, `pistonheads.com`
-- LT: `autoplius.lt`, `autogidas.lt`
-- EE: `auto24.ee`, `soov.ee`
-
-The search engine gathers public indexed result titles/snippets/URLs. The app does not bypass logins, CAPTCHAs or access controls on marketplaces.
-
-## PDF reports
-
-`report.php` creates a dependency-free PDF using standard PDF fonts, so it works on ordinary shared PHP hosting. Because standard PDF fonts are used, non-ASCII characters are transliterated in the PDF fallback. The HTML report keeps full UTF-8 text and is the best format for Latvian/German names if exact diacritics matter.
-
-## Development technology choices
-
-The dashboard itself stays light: server-rendered PHP + AJAX/fetch. This keeps first load and hosting requirements small.
-
-The generator offers separate stacks rather than loading several frameworks into one runtime:
-
-- **React + TypeScript + Vite**: larger app/admin surfaces, mature component ecosystem, complex state.
-- **Svelte + Vite**: small/medium interactive applications where runtime size and simple reactivity matter.
-- **Alpine.js + AJAX/fetch**: WordPress/PHP sites, server-rendered pages and lightweight widgets.
-- **PHP + AJAX**: simplest shared-hosting option.
-
-For search performance, the important work is server-side: parallel requests, deduplication, a 10-minute result cache, domain/country filters and source-aware normalization. The browser framework does not make external search engines faster.
-
-## Security notes
-
-- Change the initial password immediately after deployment.
-- Do not commit `storage/settings.json` because it can contain provider keys.
-- Keep HTTPS enabled.
-- Keep `storage/` outside direct web access (the included `.htaccess` denies it on Apache).
-- For Nginx, explicitly deny `/storage/` at the server configuration level.
-- The app intentionally does not support unofficial scraping of logged-in ChatGPT/Claude/Grok/Kimi sessions.
+Back up `storage/settings.json`, replace application files, then keep the existing `storage/` directory. Settings migration adds new providers/UI defaults without deleting saved keys.
 
 ## Folder structure
 
 ```text
-index.php                 UI + login
+index.php                 login + multilingual UI
 api.php                   authenticated AJAX API
 download.php              streamed downloads up to 1 GB
 report.php                HTML / JSON / PDF reports
-cleanup.php               48-hour cleanup (web/CLI)
+cleanup.php               48-hour cleanup
 config.example.php        application defaults + password hash
-.user.ini                 PHP 1 GB upload settings
 .htaccess                 Apache hardening
+.user.ini                 1 GB PHP upload settings
+manifest.webmanifest
+service-worker.js
 assets/
   app.css
   app.js
+  browser-ai.js
+  pwa.js
+  icons/
 includes/
-  bootstrap.php           sessions, settings, storage, cleanup
-  http.php                HTTP + parallel GET helpers
-  providers.php           AI adapters + failover/cooldowns
-  search.php              search engines + marketplace presets
-  generators.php          React/Svelte/Alpine/WP ZIP builders
-  pdf.php                 dependency-free PDF fallback
+  bootstrap.php
+  http.php
+  providers.php
+  search.php
+  generators.php
+  i18n.php
+  i18n_extra.php
+  pdf.php
 storage/
   uploads/
   generated/
@@ -199,6 +287,11 @@ storage/
   logs/
 ```
 
-## Upgrade strategy
+## Security notes
 
-Back up `storage/settings.json` before replacing application files. When installing a newer release, keep the existing `storage/` directory if you want to preserve API keys and settings.
+- Change the initial password after deployment.
+- Keep HTTPS enabled.
+- Never commit `storage/settings.json`; it can contain provider tokens.
+- Apache protection is included for `storage/`; on Nginx explicitly deny web access to `/storage/`.
+- The app intentionally does not scrape logged-in ChatGPT, Claude, Grok, Kimi, Copilot or other consumer web sessions as unofficial APIs.
+- Free tiers and model catalogues change, so model IDs, keys and provider order remain editable in Settings.

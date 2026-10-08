@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const AIH_VERSION = '0.1.0';
+const AIH_VERSION = '0.4.0';
 const AIH_ROOT = __DIR__ . '/..';
 const AIH_STORAGE = AIH_ROOT . '/storage';
 const AIH_UPLOADS = AIH_STORAGE . '/uploads';
@@ -30,51 +30,81 @@ function aih_path(string $bucket, string $name=''): string {
     return $name === '' ? $base : $base . DIRECTORY_SEPARATOR . $name;
 }
 
-function aih_bootstrap_storage(): void {
-    foreach ([AIH_STORAGE,AIH_UPLOADS,AIH_GENERATED,AIH_REPORTS,AIH_CACHE,AIH_LOGS] as $d) {
-        if (!is_dir($d)) @mkdir($d, 0770, true);
-    }
-    $deny = "Require all denied\nDeny from all\n";
-    if (!is_file(AIH_STORAGE.'/.htaccess')) @file_put_contents(AIH_STORAGE.'/.htaccess', $deny);
-    if (!is_file(AIH_STORAGE.'/settings.json')) {
-        $cfg = aih_config();
-        aih_write_json(AIH_STORAGE.'/settings.json', [
-            'password_hash' => (string)($cfg['security']['initial_password_hash'] ?? ''),
-            'providers' => [
-                'order' => ['ollama_local','groq','gemini','openrouter','ollama_cloud','pollinations','custom_openai'],
-                'enabled' => [
-                    'ollama_local'=>true,'groq'=>true,'gemini'=>true,'openrouter'=>true,
-                    'ollama_cloud'=>false,'pollinations'=>false,'custom_openai'=>false,
-                ],
-                'keys' => ['groq'=>'','gemini'=>'','openrouter'=>'','ollama_cloud'=>'','pollinations'=>'','custom_openai'=>''],
-                'models' => [
-                    'ollama_local'=>'qwen3:8b',
-                    'groq'=>'openai/gpt-oss-20b',
-                    'gemini'=>'gemini-3.8-flash',
-                    'openrouter'=>'openrouter/free',
-                    'ollama_cloud'=>'gpt-oss:20b-cloud',
-                    'pollinations'=>'openai-fast',
-                    'custom_openai'=>'',
-                ],
-                'ollama_local_url'=>'http://127.0.0.1:11434/v1/chat/completions',
-                'custom_openai_url'=>'',
+function aih_default_settings(): array {
+    $cfg = aih_config();
+    return [
+        'password_hash' => (string)($cfg['security']['initial_password_hash'] ?? ''),
+        'providers' => [
+            'order' => [
+                'puter','ollama_local','lmstudio_local','llamacpp_local','localai_local',
+                'webllm_browser','groq','gemini','openrouter','huggingface','mistral','ollama_cloud','pollinations','custom_openai'
             ],
-            'search' => [
-                'searxng_url'=>'',
-                'ollama_web_key'=>'',
-                'max_results'=>40,
-                'ai_enrich'=>true,
+            'enabled' => [
+                'puter'=>true,
+                'ollama_local'=>true,
+                'lmstudio_local'=>false,
+                'llamacpp_local'=>false,
+                'localai_local'=>false,
+                'webllm_browser'=>true,
+                'groq'=>false,
+                'gemini'=>false,
+                'openrouter'=>false,
+                'huggingface'=>false,
+                'mistral'=>false,
+                'ollama_cloud'=>false,
+                'pollinations'=>false,
+                'custom_openai'=>false,
             ],
-            'images' => [
-                'provider'=>'pollinations',
-                'pollinations_model'=>'flux',
-                'sdwebui_url'=>'http://127.0.0.1:7860',
+            'keys' => [
+                'groq'=>'','gemini'=>'','openrouter'=>'','huggingface'=>'','mistral'=>'','ollama_cloud'=>'','pollinations'=>'','custom_openai'=>''
             ],
-            'system_prompt' => 'You are a careful assistant for web development, WordPress, app development and structured research. Never invent source facts. When source data is missing, say it is missing.',
-            'created_at' => date(DATE_ATOM),
-        ]);
-    }
-    if (!is_file(AIH_STORAGE.'/provider_state.json')) aih_write_json(AIH_STORAGE.'/provider_state.json', []);
+            'models' => [
+                'puter'=>'auto',
+                'ollama_local'=>'qwen3:8b',
+                'lmstudio_local'=>'local-model',
+                'llamacpp_local'=>'local-model',
+                'localai_local'=>'local-model',
+                'webllm_browser'=>'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+                'groq'=>'openai/gpt-oss-20b',
+                'gemini'=>'gemini-3.8-flash',
+                'openrouter'=>'openrouter/free',
+                'huggingface'=>'deepseek-ai/DeepSeek-R1:fastest',
+                'mistral'=>'mistral-small-latest',
+                'ollama_cloud'=>'gpt-oss:20b-cloud',
+                'pollinations'=>'openai-fast',
+                'custom_openai'=>'',
+            ],
+            'ollama_local_url'=>'http://127.0.0.1:11434/v1/chat/completions',
+            'lmstudio_local_url'=>'http://127.0.0.1:1234/v1/chat/completions',
+            'llamacpp_local_url'=>'http://127.0.0.1:8080/v1/chat/completions',
+            'localai_local_url'=>'http://127.0.0.1:8080/v1/chat/completions',
+            'custom_openai_url'=>'',
+        ],
+        'search' => [
+            'searxng_url'=>'',
+            'ollama_web_key'=>'',
+            'max_results'=>40,
+            'ai_enrich'=>true,
+        ],
+        'images' => [
+            'provider'=>'puter',
+            'puter_image_model'=>'auto',
+            'puter_video_model'=>'auto',
+            'pollinations_model'=>'flux',
+            'sdwebui_url'=>'http://127.0.0.1:7860',
+        ],
+        'security' => [
+            'hcaptcha_enabled'=>false,
+            'hcaptcha_sitekey'=>'',
+            'hcaptcha_secret'=>'',
+        ],
+        'ui' => [
+            'language'=>'en',
+            'theme'=>'light',
+        ],
+        'system_prompt' => 'You are a careful assistant for web development, WordPress, app development and structured research. Never invent source facts. When source data is missing, say it is missing.',
+        'created_at' => date(DATE_ATOM),
+    ];
 }
 
 function aih_read_json(string $path, mixed $default=[]): mixed {
@@ -94,6 +124,56 @@ function aih_write_json(string $path, mixed $value): void {
     rename($tmp,$path);
 }
 
+function aih_array_is_list_compat(array $v): bool { if($v===[])return true; return array_keys($v)===range(0,count($v)-1); }
+
+function aih_merge_missing(array $defaults, array $current): array {
+    foreach ($defaults as $k=>$v) {
+        if (!array_key_exists($k,$current)) { $current[$k]=$v; continue; }
+        if (is_array($v) && is_array($current[$k]) && !aih_array_is_list_compat($v)) {
+            $current[$k]=aih_merge_missing($v,$current[$k]);
+        }
+    }
+    return $current;
+}
+
+function aih_migrate_settings(array $current): array {
+    $defaults = aih_default_settings();
+    $merged = aih_merge_missing($defaults,$current);
+    $known = $defaults['providers']['order'];
+    $oldOrder = is_array($current['providers']['order'] ?? null) ? $current['providers']['order'] : [];
+    $order=[];
+    foreach (array_merge(['puter'], $oldOrder, $known) as $id) {
+        $id=(string)$id;
+        if (in_array($id,$known,true) && !in_array($id,$order,true)) $order[]=$id;
+    }
+    $merged['providers']['order']=$order;
+    foreach ($known as $id) {
+        if (!array_key_exists($id,$merged['providers']['enabled'])) $merged['providers']['enabled'][$id]=(bool)$defaults['providers']['enabled'][$id];
+        if (!array_key_exists($id,$merged['providers']['models'])) $merged['providers']['models'][$id]=(string)$defaults['providers']['models'][$id];
+    }
+    // v0.4: old installs used gpt-5-nano and therefore never explored Puter's broader model catalog.
+    // Move that legacy default to task-aware Auto; explicit user-selected models remain untouched.
+    if (($current['providers']['models']['puter'] ?? '') === 'gpt-5-nano') $merged['providers']['models']['puter']='auto';
+    return $merged;
+}
+
+function aih_bootstrap_storage(): void {
+    foreach ([AIH_STORAGE,AIH_UPLOADS,AIH_GENERATED,AIH_REPORTS,AIH_CACHE,AIH_LOGS] as $d) {
+        if (!is_dir($d)) @mkdir($d, 0770, true);
+    }
+    $deny = "Require all denied\nDeny from all\n";
+    if (!is_file(AIH_STORAGE.'/.htaccess')) @file_put_contents(AIH_STORAGE.'/.htaccess', $deny);
+    $settingsPath=AIH_STORAGE.'/settings.json';
+    if (!is_file($settingsPath)) {
+        aih_write_json($settingsPath, aih_default_settings());
+    } else {
+        $before=aih_read_json($settingsPath,[]);
+        $after=aih_migrate_settings(is_array($before)?$before:[]);
+        if ($after !== $before) aih_write_json($settingsPath,$after);
+    }
+    if (!is_file(AIH_STORAGE.'/provider_state.json')) aih_write_json(AIH_STORAGE.'/provider_state.json', []);
+}
+
 function aih_update_json(string $path, callable $fn, mixed $default=[]): mixed {
     $lock = @fopen($path.'.lock','c+');
     if (!$lock) throw new RuntimeException('Storage lock failed');
@@ -110,7 +190,7 @@ function aih_settings(): array {
     $v = aih_read_json(AIH_STORAGE.'/settings.json', []);
     return is_array($v) ? $v : [];
 }
-function aih_save_settings(array $v): void { aih_write_json(AIH_STORAGE.'/settings.json', $v); }
+function aih_save_settings(array $v): void { aih_write_json(AIH_STORAGE.'/settings.json', aih_migrate_settings($v)); }
 
 function aih_start_session(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
@@ -128,7 +208,9 @@ function aih_headers(bool $html=true): void {
     header('Referrer-Policy: no-referrer');
     header('Cache-Control: no-store');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-    if ($html) header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    if ($html) {
+        header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://*.hcaptcha.com; script-src 'self' 'wasm-unsafe-eval' https://js.puter.com https://esm.run https://cdn.jsdelivr.net https://*.hcaptcha.com; connect-src 'self' https: wss:; frame-src https://*.puter.com https://*.hcaptcha.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    }
 }
 
 function aih_e(?string $s): string { return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE, 'UTF-8'); }
@@ -167,7 +249,7 @@ function aih_storage_stats(): array {
     $out=['files'=>0,'bytes'=>0,'by_bucket'=>[]];
     foreach (['uploads'=>AIH_UPLOADS,'generated'=>AIH_GENERATED,'reports'=>AIH_REPORTS,'cache'=>AIH_CACHE] as $k=>$dir) {
         $n=0;$b=0;
-        foreach (glob($dir.'/*') ?: [] as $f) if (is_file($f)) {$n++;$b+=(int)(filesize($f)?:0);} 
+        foreach (glob($dir.'/*') ?: [] as $f) if (is_file($f)) {$n++;$b+=(int)(filesize($f)?:0);}
         $out['by_bucket'][$k]=['files'=>$n,'bytes'=>$b]; $out['files']+=$n; $out['bytes']+=$b;
     }
     return $out;
