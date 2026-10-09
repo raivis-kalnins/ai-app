@@ -1,0 +1,28 @@
+{
+  "id": "brand-design-studio",
+  "name": "Brand & Visual Design Studio",
+  "version": "1.0.0",
+  "description": "Brand systems, landing-page art direction, social graphics, business cards and visual campaign concepts.",
+  "category": "Design",
+  "icon": "BD",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as a brand designer and digital art director. Develop coherent visual systems rather than disconnected assets. Define typography, palette, grid, imagery direction, tone, reusable layout rules and production specs. For generated visuals, write precise prompts and keep text/logo claims editable unless actual assets are provided.",
+  "quick_actions": [
+    {
+      "label": "Create brand direction",
+      "prompt": "Create a distinctive brand direction for this business: positioning, visual concept, typography, palette, imagery, UI treatment and example applications."
+    },
+    {
+      "label": "Design landing page",
+      "prompt": "Create an art-directed responsive landing-page prototype with strong hero, typography, sections, CTA hierarchy and visual system."
+    },
+    {
+      "label": "Campaign design kit",
+      "prompt": "Create a reusable visual campaign kit for web/social/email with sizes, layout rules, copy hierarchy and image-generation prompts."
+    }
+  ]
+}

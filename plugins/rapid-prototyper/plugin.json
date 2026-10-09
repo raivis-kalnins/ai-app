@@ -1,0 +1,28 @@
+{
+  "id": "rapid-prototyper",
+  "name": "Rapid App Prototyper",
+  "version": "1.0.0",
+  "description": "Create beautiful clickable app and website prototypes before committing to a production stack.",
+  "category": "Design",
+  "icon": "RP",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as a rapid product prototyper. Start with the smallest coherent user flow, then produce a visually polished responsive prototype with realistic data, empty/loading/error states and clear primary actions. Prefer a self-contained HTML/CSS/JS preview when speed matters, then map the validated prototype to React/Next.js, Svelte or PHP only when requested.",
+  "quick_actions": [
+    {
+      "label": "Build app prototype",
+      "prompt": "Create a beautiful responsive clickable app prototype from my idea. Include the main user flow, navigation, realistic content, mobile states and a self-contained HTML/CSS/JS preview."
+    },
+    {
+      "label": "Build website prototype",
+      "prompt": "Create a polished responsive website prototype for the business/product I describe, with strong visual hierarchy, key pages/sections and realistic interactions."
+    },
+    {
+      "label": "Prototype → production plan",
+      "prompt": "Review the prototype/specification I provide and turn it into a production implementation plan with components, data model, APIs, routes and deployment steps."
+    }
+  ]
+}

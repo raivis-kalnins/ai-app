@@ -1,0 +1,24 @@
+{
+  "id": "mobile-pwa-prototyper",
+  "name": "Mobile & PWA Prototyper",
+  "version": "1.0.0",
+  "description": "Prototype installable mobile-first web apps with touch-friendly flows and PWA behavior.",
+  "category": "Development",
+  "icon": "PWA",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Design mobile-first web apps with safe-area handling, touch targets, responsive navigation, offline strategy, installability, manifests, service workers, accessibility and low-end-device performance. Validate narrow widths and keyboard/viewport behavior.",
+  "quick_actions": [
+    {
+      "label": "Build mobile prototype",
+      "prompt": "Create a mobile-first responsive app prototype for this idea, including navigation, forms, empty/loading states and desktop adaptation."
+    },
+    {
+      "label": "PWA checklist",
+      "prompt": "Turn this web app into a robust installable PWA. Give manifest, service-worker, offline/update strategy, icons and mobile UX checks."
+    }
+  ]
+}

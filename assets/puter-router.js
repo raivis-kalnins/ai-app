@@ -1,6 +1,24 @@
 (()=>{'use strict';
-const cache={chatModels:null,imageModels:null};
+const cache={chatModels:null,imageModels:null,usage:null,usageAt:0};
 const clean=s=>String(s||'').toLowerCase();
+const puterBlockedKey='aih_puter_quota_blocked_until';
+function blockPuter(seconds=900){try{localStorage.setItem(puterBlockedKey,String(Date.now()+seconds*1000))}catch(_){}}
+function isPuterBlocked(){try{return Number(localStorage.getItem(puterBlockedKey)||0)>Date.now()}catch(_){return false}}
+async function monthlyUsage(force=false){
+  await ensure();
+  if(!force&&cache.usage&&(Date.now()-cache.usageAt)<30000)return cache.usage;
+  if(!window.puter?.auth?.getMonthlyUsage)return null;
+  try{cache.usage=await window.puter.auth.getMonthlyUsage();cache.usageAt=Date.now();return cache.usage}catch(_){return null}
+}
+async function allowanceStatus(force=false){
+  if(isPuterBlocked()&&!force)return{ok:false,remaining:0,reason:'cooldown'};
+  const u=await monthlyUsage(force),info=u?.allowanceInfo||{},remaining=Number(info?.remaining);
+  if(Number.isFinite(remaining)&&remaining<=0){blockPuter(900);return{ok:false,remaining:0,total:Number(info?.monthUsageAllowance||0),reason:'exhausted'}}
+  return{ok:true,remaining:Number.isFinite(remaining)?remaining:null,total:Number(info?.monthUsageAllowance||0),reason:'available'};
+}
+async function requireAllowance(){const st=await allowanceStatus(false);if(!st.ok)throw Object.assign(new Error('Puter free monthly allowance is exhausted; switching to another free/local provider.'),{code:'puter_allowance_exhausted',puterStatus:st});return st;}
+function markQuotaError(err){const code=clean(err?.code||err?.error||''),msg=clean(err?.message||String(err||''));if(code.includes('insufficient_funds')||code.includes('subscription_required')||msg.includes('insufficient_funds')||msg.includes('low balance')||msg.includes('not have enough funding'))blockPuter(900);}
+
 const textFrom=r=>{
   if(!r)return'';
   if(typeof r==='string')return r;
@@ -97,24 +115,27 @@ async function pickCompareModels(task='compare',count=3){
 }
 async function chat(messages,{task='chat',model='auto'}={}){
   await ensure();
+  await requireAllowance();
   const chosen=await pickModel(task,model);
-  const opts={model:chosen,normalize:true};
+  const opts={model:chosen,normalize:true,max_tokens:2048};
   // Puter exposes web_search for compatible chat models. Use it for research when possible,
   // then retry normally if the selected model/provider does not support the tool.
   if(task==='research'&&/(?:^|[/:])(gpt-5\.?6|gpt-5|o3|o4)|openai/i.test(chosen))opts.tools=[{type:'web_search'}];
   let r;
-  try{r=await window.puter.ai.chat(messages,opts)}catch(err){if(opts.tools){delete opts.tools;r=await window.puter.ai.chat(messages,opts)}else throw err}
+  try{r=await window.puter.ai.chat(messages,opts)}catch(err){markQuotaError(err);if(opts.tools){delete opts.tools;try{r=await window.puter.ai.chat(messages,opts)}catch(err2){markQuotaError(err2);throw err2}}else throw err}
   const text=textFrom(r).trim();if(!text)throw new Error('Puter AI returned an empty response.');
   return{text,model:chosen,provider:'Puter AI'};
 }
 async function compare(messages,{count=3}={}){
   await ensure();
+  await requireAllowance();
   const models=await pickCompareModels('compare',count);
-  const settled=await Promise.allSettled(models.map(async model=>{const r=await window.puter.ai.chat(messages,{model,normalize:true});const text=textFrom(r).trim();if(!text)throw new Error('empty');return{model,text};}));
+  const settled=await Promise.allSettled(models.map(async model=>{let r;try{r=await window.puter.ai.chat(messages,{model,normalize:true,max_tokens:1536})}catch(err){markQuotaError(err);throw err};const text=textFrom(r).trim();if(!text)throw new Error('empty');return{model,text};}));
   return settled.filter(x=>x.status==='fulfilled').map(x=>x.value);
 }
 async function synthesize(question,answers,lang='en'){
   if(!answers.length)throw new Error('No comparison answers.');
+  await requireAllowance();
   const model=await pickModel('research','auto',answers.map(x=>x.model));
   const prompt=[
     'You are a careful comparison editor. Produce one concise best answer in language code '+lang+'.',
@@ -122,23 +143,23 @@ async function synthesize(question,answers,lang='en'){
     'Question: '+question,
     'Candidates:\n'+answers.map((a,i)=>'['+(i+1)+'] '+a.model+'\n'+a.text).join('\n\n')
   ].join('\n\n');
-  const r=await window.puter.ai.chat(prompt,{model,normalize:true});
+  let r;try{r=await window.puter.ai.chat(prompt,{model,normalize:true,max_tokens:1536})}catch(err){markQuotaError(err);throw err}
   const text=textFrom(r).trim();return{text:text||answers[0].text,model};
 }
 async function image(prompt,{model='auto',provider=''}={}){
-  await ensure();if(!window.puter?.ai?.txt2img)throw new Error('Puter image generation is not available.');
+  await ensure();await requireAllowance();if(!window.puter?.ai?.txt2img)throw new Error('Puter image generation is not available.');
   const opts={};if(model&&model!=='auto')opts.model=model;if(provider)opts.provider=provider;
-  return window.puter.ai.txt2img(prompt,opts);
+  try{return await window.puter.ai.txt2img(prompt,opts)}catch(err){markQuotaError(err);throw err}
 }
 async function video(prompt,{model='auto'}={}){
-  await ensure();if(!window.puter?.ai?.txt2vid)throw new Error('Puter video generation is not available.');
+  await ensure();await requireAllowance();if(!window.puter?.ai?.txt2vid)throw new Error('Puter video generation is not available.');
   const opts={};if(model&&model!=='auto')opts.model=model;
-  return window.puter.ai.txt2vid(prompt,opts);
+  try{return await window.puter.ai.txt2vid(prompt,opts)}catch(err){markQuotaError(err);throw err}
 }
 function fillSelect(select,models,placeholder='Auto best available'){
   if(!select)return;const current=select.value;select.innerHTML='';const a=document.createElement('option');a.value='auto';a.textContent=placeholder;select.appendChild(a);
   for(const m of models){const id=modelId(m);if(!id)continue;const o=document.createElement('option');o.value=id;o.textContent=(m?.provider?m.provider+' · ':'')+(m?.name||id);select.appendChild(o);}
   if([...select.options].some(o=>o.value===current))select.value=current;
 }
-window.AIHPuterRouter={ensure,listChatModels,listImageModels,detectIntent,pickModel,pickCompareModels,chat,compare,synthesize,image,video,fillSelect,textFrom};
+window.AIHPuterRouter={ensure,listChatModels,listImageModels,monthlyUsage,allowanceStatus,detectIntent,pickModel,pickCompareModels,chat,compare,synthesize,image,video,fillSelect,textFrom};
 })();

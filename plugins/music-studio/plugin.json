@@ -1,0 +1,28 @@
+{
+  "id": "music-studio",
+  "name": "Music Studio",
+  "version": "1.0.0",
+  "description": "Composition, score editing, chords, accompaniment, MIDI/MusicXML and music-app product design.",
+  "category": "Music",
+  "icon": "♫",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as a music notation, composition and music-software specialist. Support melody, harmony, chords, key/time signatures, note durations, stem direction, accompaniment, orchestration, MIDI, MusicXML, Web Audio and score-editor UX. Separate music-theory facts from guesses. For software tasks, design editable score data models and playback/export workflows rather than hardcoding rendered notes.",
+  "quick_actions": [
+    {
+      "label": "Compose & arrange",
+      "prompt": "Help me compose or arrange the music I provide. Analyse key, harmony, rhythm and instrumentation, then propose editable notation/chords and accompaniment."
+    },
+    {
+      "label": "Build score editor",
+      "prompt": "Design and implement a responsive web score editor prototype with editable notes, measures, tempo, playback, chords, multiple staves and MusicXML/MIDI export."
+    },
+    {
+      "label": "Music app UX",
+      "prompt": "Create a polished music app interface/prototype for the workflow I describe, optimized for desktop, tablet and mobile."
+    }
+  ]
+}

@@ -24,6 +24,36 @@ function aih_sector_catalog(): array {
         'health_beauty'=>['key'=>'sector_health_beauty','keywords'=>'health beauty wellness salon'],
         'other'=>['key'=>'sector_other','keywords'=>'classifieds marketplace offers'],
     ];
+ }
+
+function aih_sector_filter_schema(): array {
+    $f=fn(string $name,string $label,string $type='text',string $placeholder='',array $options=[])=>['name'=>$name,'label'=>$label,'type'=>$type,'placeholder'=>$placeholder,'options'=>$options];
+    return [
+        'ALL'=>[$f('keywords','Keywords'),$f('location','Location / city'),$f('condition','Condition / type'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'vehicles'=>[$f('brand','Make / brand'),$f('model','Model'),$f('body_type','Body type','select','',['SUV','Estate','Hatchback','Saloon','Van','Motorcycle','Other']),$f('fuel','Fuel','select','',['Petrol','Diesel','Hybrid','Plug-in hybrid','Electric','LPG','Other']),$f('transmission','Transmission','select','',['Automatic','Manual','Other']),$f('drive','Drive','select','',['FWD','RWD','AWD / 4x4']),$f('seats','Seats','number'),$f('year_min','Min year','number'),$f('year_max','Max year','number'),$f('mileage_max','Max mileage','number'),$f('location','Location / city'),$f('condition','Condition','select','',['New','Used','Damaged']),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'real_estate'=>[$f('property_type','Property type','select','',['Apartment','House','Land','Commercial','Room','Garage','Other']),$f('transaction','Transaction','select','',['For sale','For rent']),$f('rooms_min','Min rooms','number'),$f('rooms_max','Max rooms','number'),$f('area_min','Min area m2','number'),$f('area_max','Max area m2','number'),$f('land_area_min','Min land area','number'),$f('location','Location / city'),$f('furnished','Furnished','select','',['Any','Yes','No']),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'jobs'=>[$f('job_title','Job title'),$f('company','Company'),$f('employment_type','Employment type','select','',['Full time','Part time','Contract','Temporary','Internship']),$f('remote_mode','Work mode','select','',['On-site','Hybrid','Remote']),$f('experience','Experience level','select','',['Entry','Mid','Senior','Lead / Manager']),$f('location','Location'),$f('salary_min','Min salary','number'),$f('salary_max','Max salary','number'),$f('keywords','Skills / keywords')],
+        'services'=>[$f('service_type','Service type'),$f('provider','Provider / company'),$f('location','Location / service area'),$f('availability','Availability'),$f('rating_min','Min rating','number'),$f('price_min','Min price','number'),$f('price_max','Max price','number'),$f('keywords','Requirements / keywords')],
+        'digital_agency'=>[$f('service_type','Service','select','',['Web design','WordPress','WooCommerce','E-commerce','SEO','PPC','Branding','App development','AI automation']),$f('technology','Technology / platform'),$f('company','Agency / company'),$f('location','Location'),$f('remote_mode','Delivery','select','',['Local','Remote','Hybrid']),$f('budget_min','Min budget','number'),$f('budget_max','Max budget','number'),$f('keywords','Industry / requirements')],
+        'electronics'=>[$f('category','Product category'),$f('brand','Brand'),$f('model','Model'),$f('condition','Condition','select','',['New','Used','Refurbished']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number'),$f('keywords','Specifications')],
+        'computers'=>[$f('category','Computer type','select','',['Laptop','Desktop','Mini PC','Monitor','GPU','CPU','Components','Software']),$f('brand','Brand'),$f('model','Model'),$f('cpu','CPU'),$f('ram','RAM'),$f('storage','Storage'),$f('gpu','GPU'),$f('condition','Condition','select','',['New','Used','Refurbished']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'phones'=>[$f('brand','Brand'),$f('model','Model'),$f('storage','Storage'),$f('colour','Colour'),$f('network','Network / SIM'),$f('condition','Condition','select','',['New','Used','Refurbished']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'home_garden'=>[$f('category','Item type'),$f('brand','Brand'),$f('material','Material'),$f('dimensions','Dimensions'),$f('condition','Condition','select','',['New','Used']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'construction'=>[$f('category','Material / equipment type'),$f('brand','Brand'),$f('model','Model'),$f('quantity','Quantity'),$f('condition','Condition','select','',['New','Used','For hire']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'agriculture'=>[$f('category','Machinery / item type'),$f('brand','Brand'),$f('model','Model'),$f('year_min','Min year','number'),$f('hours_max','Max operating hours','number'),$f('condition','Condition','select','',['New','Used']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'transport'=>[$f('service_type','Transport type','select','',['Delivery','Freight','Moving','Taxi / passenger','Vehicle transport','Courier','Storage']),$f('from_location','From'),$f('to_location','To'),$f('vehicle_type','Vehicle type'),$f('weight_max','Max weight / load'),$f('date','Date'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'animals'=>[$f('animal_type','Animal type'),$f('breed','Breed'),$f('age','Age'),$f('gender','Gender','select','',['Male','Female','Any']),$f('pedigree','Pedigree','select','',['Any','Yes','No']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'fashion'=>[$f('category','Category'),$f('brand','Brand'),$f('size','Size'),$f('gender','For','select','',['Women','Men','Kids','Unisex']),$f('colour','Colour'),$f('condition','Condition','select','',['New','Used']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'business'=>[$f('business_type','Business / asset type'),$f('industry','Industry'),$f('revenue_min','Min revenue','number'),$f('profit_min','Min profit','number'),$f('employees_max','Max employees','number'),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'leisure'=>[$f('category','Category / activity'),$f('brand','Brand / organiser'),$f('date','Date'),$f('location','Location'),$f('condition','Condition / ticket type'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'education'=>[$f('course_type','Course / lesson type'),$f('subject','Subject'),$f('level','Level'),$f('language','Teaching language'),$f('delivery','Delivery','select','',['In person','Online','Hybrid']),$f('location','Location'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'health_beauty'=>[$f('service_type','Service / treatment'),$f('provider','Clinic / salon / provider'),$f('location','Location'),$f('availability','Date / availability'),$f('rating_min','Min rating','number'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+        'other'=>[$f('category','Category'),$f('keywords','Keywords'),$f('location','Location'),$f('condition','Condition / type'),$f('price_min','Min price','number'),$f('price_max','Max price','number')],
+    ];
+}
+
+function aih_filter_terms(array $filters): string {
+    $parts=[];foreach($filters as$k=>$v){if(is_array($v))$v=implode(' ',array_filter(array_map('strval',$v)));if(!is_scalar($v))continue;$v=trim((string)$v);if($v==='')continue;$v=substr($v,0,160);$label=str_replace('_',' ',preg_replace('/[^a-z0-9_]/i','',(string)$k));$parts[]=$label.' '.$v;}return trim(implode(' ',$parts));
 }
 
 function aih_country_catalog(): array {
@@ -76,28 +106,12 @@ function aih_sector_domains(string $country,string $sector): array {
 }
 
 function aih_build_search_queries(array $in): array {
-    $q=trim((string)($in['q']??''));
-    $brand=trim((string)($in['brand']??$in['make']??''));$model=trim((string)($in['model']??''));
-    $min=trim((string)($in['price_min']??''));$max=trim((string)($in['price_max']??''));$year=trim((string)($in['year_min']??''));
-    $location=trim((string)($in['location']??''));$condition=trim((string)($in['condition']??''));$keywords=trim((string)($in['keywords']??''));
-    $structured=trim(implode(' ',array_filter([$brand,$model,$keywords,$location,$condition,$year,$min!==''?'price from '.$min:'',$max!==''?'price to '.$max:''])));
-    $base=trim($q!==''?$q:$structured);if($base==='')return [];
-    if($q!==''&&$structured!=='')$base=trim($q.' '.$structured);
+    $q=trim((string)($in['q']??''));$filterMap=is_array($in['sector_filters']??null)?$in['sector_filters']:[];
+    // Legacy top-level filters remain supported for existing saved forms/links.
+    $legacy=[];foreach(['brand','make','model','keywords','location','condition','price_min','price_max','year_min']as$k)if(isset($in[$k])&&is_scalar($in[$k])&&trim((string)$in[$k])!=='')$legacy[$k]=(string)$in[$k];
+    $common=is_array($filterMap['ALL']??null)?$filterMap['ALL']:[];$baseCommon=trim(implode(' ',array_filter([$q,aih_filter_terms($legacy),aih_filter_terms($common)])));
     $countries=aih_selected_countries($in);$sectors=aih_selected_sectors($in);$catalog=aih_country_catalog();$sectorCatalog=aih_sector_catalog();$queries=[];
-    foreach($countries as$cc){
-        $country=$catalog[$cc]['name']??$cc;
-        foreach($sectors as$sector){
-            $sectorWords=$sector==='ALL'?'':($sectorCatalog[$sector]['keywords']??'');
-            $broad=trim($base.' '.$sectorWords.' '.$country);
-            $queries[]=['q'=>$broad,'country'=>$cc,'sector'=>$sector,'domain'=>''];
-            $domains=aih_sector_domains($cc,$sector);
-            if($domains){
-                $parts=array_map(fn($d)=>'site:'.$d,array_slice($domains,0,3));
-                $queries[]=['q'=>trim($base.' '.$sectorWords.' '.$country.' ('.implode(' OR ',$parts).')'),'country'=>$cc,'sector'=>$sector,'domain'=>implode(',',$domains)];
-            }
-            if(count($queries)>=30)break 2;
-        }
-    }
+    foreach($countries as$cc){$country=$catalog[$cc]['name']??$cc;foreach($sectors as$sector){$specific=$sector==='ALL'?[]:(is_array($filterMap[$sector]??null)?$filterMap[$sector]:[]);$criteria=trim(implode(' ',array_filter([$baseCommon,aih_filter_terms($specific)])));if($criteria==='')continue;$sectorWords=$sector==='ALL'?'':($sectorCatalog[$sector]['keywords']??'');$broad=trim($criteria.' '.$sectorWords.' '.$country);$queries[]=['q'=>$broad,'country'=>$cc,'sector'=>$sector,'domain'=>''];$domains=aih_sector_domains($cc,$sector);if($domains){$parts=array_map(fn($d)=>'site:'.$d,array_slice($domains,0,3));$queries[]=['q'=>trim($criteria.' '.$sectorWords.' '.$country.' ('.implode(' OR ',$parts).')'),'country'=>$cc,'sector'=>$sector,'domain'=>implode(',',$domains)];}if(count($queries)>=30)break 2;}}
     return $queries;
 }
 
@@ -176,7 +190,7 @@ function aih_dedupe_results(array $rows,int $limit): array {
 function aih_ai_enrich_rows(array $rows): array {
     if(!$rows)return $rows;$payload=[];foreach(array_slice($rows,0,40)as$i=>$r)$payload[]=['i'=>$i,'title'=>$r['title'],'snippet'=>$r['snippet'],'url'=>$r['url'],'country'=>$r['country']??'','sector'=>$r['sector']??'ALL'];
     $messages=[['role'=>'system','content'=>'You structure web search results without inventing facts. Return ONLY JSON array. Each item: i, category, brand, model, price, currency, year, mileage, location, company, salary, area, condition. Use null when not explicitly present in title/snippet. Never infer missing values.'],['role'=>'user','content'=>json_encode($payload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)]];
-    $res=aih_ai_chat($messages);if(empty($res['ok']))return $rows;$txt=trim((string)$res['text']);$txt=preg_replace('/^```(?:json)?\s*|\s*```$/i','',$txt);$j=json_decode($txt,true);if(!is_array($j))return $rows;
+    $res=aih_ai_chat($messages,null,'research');if(empty($res['ok']))return $rows;$txt=trim((string)$res['text']);$txt=preg_replace('/^```(?:json)?\s*|\s*```$/i','',$txt);$j=json_decode($txt,true);if(!is_array($j))return $rows;
     foreach($j as$x){$i=(int)($x['i']??-1);if(!isset($rows[$i]))continue;foreach(['category','brand','model','location','company','salary','area','condition']as$k)if(isset($x[$k])&&is_scalar($x[$k]))$rows[$i][$k]=(string)$x[$k];foreach(['price','currency','year','mileage']as$k)if(empty($rows[$i][$k])&&isset($x[$k])&&is_scalar($x[$k]))$rows[$i][$k]=(string)$x[$k];}
     foreach($rows as &$row){if(empty($row['make'])&&!empty($row['brand']))$row['make']=$row['brand'];}unset($row);
     return $rows;
@@ -186,7 +200,7 @@ function aih_search_ai_summary(array $rows,string $query,string $lang): array {
     if(!$rows)return ['text'=>'','provider'=>''];
     $payload=[];foreach(array_slice($rows,0,20)as$r)$payload[]=['title'=>$r['title'],'snippet'=>$r['snippet'],'url'=>$r['url'],'country'=>$r['country']??'','price'=>$r['price']??'','year'=>$r['year']??'','sector'=>$r['sector']??'ALL','location'=>$r['location']??'','company'=>$r['company']??'','area'=>$r['area']??''];
     $prompt='Search query: '.$query."\nResults:\n".json_encode($payload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-    $res=aih_ai_chat([['role'=>'system','content'=>'Summarize and compare only the supplied sourced results. Do not invent facts. Mention uncertainty and important differences. Reply in language code '.$lang.'. Keep it concise.'],['role'=>'user','content'=>$prompt]]);
+    $res=aih_ai_chat([['role'=>'system','content'=>'Summarize and compare only the supplied sourced results. Do not invent facts. Mention uncertainty and important differences. Reply in language code '.$lang.'. Keep it concise.'],['role'=>'user','content'=>$prompt]],null,'research');
     return !empty($res['ok'])?['text'=>(string)$res['text'],'provider'=>(string)($res['provider_name']??$res['provider']??'')]:['text'=>'','provider'=>''];
 }
 

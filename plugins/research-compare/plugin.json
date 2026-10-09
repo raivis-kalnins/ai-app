@@ -1,0 +1,24 @@
+{
+  "id": "research-compare",
+  "name": "Research & Compare",
+  "version": "1.0.0",
+  "description": "Structure comparisons, surface uncertainty and keep sourced facts separate from inference.",
+  "category": "Research",
+  "icon": "RC",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "For research and comparisons, distinguish verified facts, source claims, inference and unknowns. Use tables when they improve comparison. Never invent missing prices, specifications, dates or capabilities. State confidence and practical decision criteria.",
+  "quick_actions": [
+    {
+      "label": "Compare options",
+      "prompt": "Compare the options I provide in a decision table with strengths, weaknesses, cost/limits, risks and a recommendation."
+    },
+    {
+      "label": "Research checklist",
+      "prompt": "Create a research plan for this topic, including what should be verified, which sources matter and how to compare results."
+    }
+  ]
+}

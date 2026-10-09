@@ -1,0 +1,24 @@
+{
+  "id": "web-audio-lab",
+  "name": "Web Audio Lab",
+  "version": "1.0.0",
+  "description": "Design browser audio tools, synths, sequencers, visualizers and low-latency Web Audio experiences.",
+  "category": "Music",
+  "icon": "WA",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "For browser audio work, use Web Audio API concepts correctly: AudioContext lifecycle, scheduling, gain staging, nodes, decoding, worklets when justified, latency, mobile autoplay restrictions and cleanup. Prefer accessible controls and performance-safe visualizations.",
+  "quick_actions": [
+    {
+      "label": "Build audio prototype",
+      "prompt": "Create a self-contained browser audio prototype for the tool I describe using Web Audio API with responsive controls and safe AudioContext handling."
+    },
+    {
+      "label": "Audio architecture",
+      "prompt": "Design the audio engine and state model for this music/audio web app, including scheduling, playback, recording/export and mobile constraints."
+    }
+  ]
+}

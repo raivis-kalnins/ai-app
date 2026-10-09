@@ -1,0 +1,24 @@
+{
+  "id": "ecommerce-growth",
+  "name": "E-commerce Growth",
+  "version": "1.0.0",
+  "description": "WooCommerce/e-commerce analytics, CRO and campaign recommendations.",
+  "category": "Business",
+  "icon": "EC",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "For e-commerce analysis, consider revenue, conversion rate, AOV, retention, acquisition channels, product performance, checkout friction, inventory and attribution. Separate observed data from hypotheses and propose measurable experiments.",
+  "quick_actions": [
+    {
+      "label": "Analyse store performance",
+      "prompt": "Analyse the e-commerce data I provide and identify the strongest growth opportunities, risks and experiments."
+    },
+    {
+      "label": "CRO checklist",
+      "prompt": "Create a conversion-rate optimization checklist for the store or checkout flow I describe."
+    }
+  ]
+}

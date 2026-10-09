@@ -79,6 +79,10 @@ function aih_build_report_pdf(array $report): string {
     foreach($metaLines as$l){$stream.=aih_pdf_text(50,$yy,$l,8.7,'F1','#334155');$yy-=13;}$y-=$metaH+8;
     $stream.=aih_pdf_text(36,$y,'Generated '.$created,7.7,'F3','#7A879C');$y-=22;
 
+    $filterMap=is_array($in['sector_filters']??null)?$in['sector_filters']:[];
+    if($filterMap){$filterParts=[];foreach($filterMap as$sec=>$vals){if(!is_array($vals))continue;$items=[];foreach($vals as$k=>$v){$v=trim((string)$v);if($v!=='')$items[]=ucwords(str_replace('_',' ',(string)$k)).': '.$v;}if($items)$filterParts[]=aih_pdf_sector_label((string)$sec).' - '.implode(', ',$items);}if($filterParts)$card('Structured filters',implode("
+",$filterParts),'#F8FAFC','#21A1A1');}
+
     if(!empty($report['ai_summary']['text'])){
         $card('AI comparison summary - '.(string)($report['ai_summary']['provider']??'AI'),(string)$report['ai_summary']['text'],'#EEF4FF','#4F6FFF');
     }

@@ -1,0 +1,24 @@
+{
+  "id": "svg-illustration-studio",
+  "name": "SVG & Illustration Studio",
+  "version": "1.0.0",
+  "description": "Create lightweight icons, diagrams, interface illustrations and editable SVG concepts for web products.",
+  "category": "Design",
+  "icon": "SVG",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Create accessible, lightweight SVG and CSS illustrations suitable for responsive web use. Prefer editable vector primitives, viewBox-based scaling, semantic labels when informative, and avoid unnecessary path complexity. Never embed untrusted scripts in SVG.",
+  "quick_actions": [
+    {
+      "label": "Create SVG icon set",
+      "prompt": "Create a coherent accessible SVG icon set for the features I describe, with consistent stroke, viewBox and sizing."
+    },
+    {
+      "label": "Create web illustration",
+      "prompt": "Design an editable SVG/CSS hero illustration for the product/website I describe, optimized for fast loading and responsive layouts."
+    }
+  ]
+}

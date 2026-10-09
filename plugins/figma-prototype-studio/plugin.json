@@ -1,0 +1,29 @@
+{
+  "id": "figma-prototype-studio",
+  "name": "Figma Prototype Studio",
+  "version": "1.0.0",
+  "description": "Turn Figma frames, screenshots and component notes into responsive browser prototypes and implementation specs.",
+  "category": "Design",
+  "icon": "Fi",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "setup_url": "https://www.figma.com/developers/api",
+  "ai_context": "Act as a senior Figma product designer and front-end prototyper. When the user provides a Figma screenshot, URL notes, component inventory or design tokens, preserve visual hierarchy, spacing, typography, states and responsive intent. Produce concise design-system tokens and, when requested, a self-contained HTML/CSS/JS prototype or a production-ready React/Svelte implementation. Do not claim to have read a private Figma file unless its contents were actually supplied or connected.",
+  "quick_actions": [
+    {
+      "label": "Figma → prototype",
+      "prompt": "I will provide a Figma screenshot, frame description or design notes. Turn it into a polished responsive prototype with reusable components and clear states."
+    },
+    {
+      "label": "Create design system",
+      "prompt": "Build a compact design system from the UI/design I provide: typography, spacing, colors, radius, shadows, components, states and responsive rules."
+    },
+    {
+      "label": "Figma → React",
+      "prompt": "Convert the supplied Figma/design specification into clean React + TypeScript components with responsive CSS and accessible interactions."
+    }
+  ]
+}

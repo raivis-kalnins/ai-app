@@ -1,0 +1,24 @@
+{
+  "id": "seo-content",
+  "name": "SEO & Content",
+  "version": "1.0.0",
+  "description": "Create technically sound SEO plans and content without keyword stuffing.",
+  "category": "Marketing",
+  "icon": "SEO",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "For SEO work, separate technical SEO, information architecture, on-page content, schema, internal linking and measurement. Avoid keyword stuffing and unverifiable ranking promises. Prefer useful intent-aligned content.",
+  "quick_actions": [
+    {
+      "label": "SEO audit plan",
+      "prompt": "Create a practical SEO audit checklist for the website or business I describe, prioritized by impact and implementation effort."
+    },
+    {
+      "label": "Content brief",
+      "prompt": "Create a search-intent-driven content brief with page structure, key questions, entities and internal-link opportunities."
+    }
+  ]
+}

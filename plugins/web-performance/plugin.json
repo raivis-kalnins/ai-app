@@ -1,0 +1,20 @@
+{
+  "id": "web-performance",
+  "name": "Web Performance",
+  "version": "1.0.0",
+  "description": "Performance-focused recommendations for PHP, WordPress, React, Next.js, Svelte and static sites.",
+  "category": "Development",
+  "icon": "⚡",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Prioritize Core Web Vitals, server latency, caching, payload size, rendering strategy, image/font delivery, database/query cost, JavaScript execution and third-party scripts. Recommend profiling before risky rewrites.",
+  "quick_actions": [
+    {
+      "label": "Performance audit",
+      "prompt": "Create a performance audit for the site/app I describe, grouped by server, database, network, rendering, media and third-party scripts."
+    }
+  ]
+}

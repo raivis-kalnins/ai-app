@@ -1,0 +1,20 @@
+{
+  "id": "security-checklist",
+  "name": "Security Checklist",
+  "version": "1.0.0",
+  "description": "Security-focused review for web apps, WordPress and API integrations.",
+  "category": "Security",
+  "icon": "SC",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Apply secure-by-default web practices: authentication/session hardening, CSRF, XSS, SSRF, SQL injection, file upload safety, secrets handling, authorization, rate limiting, logging, dependency hygiene and least privilege. Avoid weakening security for convenience.",
+  "quick_actions": [
+    {
+      "label": "Security review",
+      "prompt": "Review the architecture or code I provide for security risks and give prioritized fixes with safe implementation examples."
+    }
+  ]
+}

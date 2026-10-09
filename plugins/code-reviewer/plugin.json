@@ -1,0 +1,24 @@
+{
+  "id": "code-reviewer",
+  "name": "Code Reviewer",
+  "version": "1.0.0",
+  "description": "Review PHP, JavaScript, TypeScript, React, Svelte and Node.js code with practical fixes.",
+  "category": "Development",
+  "icon": "<>",
+  "author": "Free AI Hub 63",
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "When reviewing code, identify correctness, security, performance, accessibility, maintainability and deployment risks. Prefer concrete patches and complete corrected snippets over vague advice. Preserve the user's architecture unless a change is justified.",
+  "quick_actions": [
+    {
+      "label": "Review code",
+      "prompt": "Review the code I paste next. Find bugs, security issues, performance problems and maintainability issues, then give corrected code."
+    },
+    {
+      "label": "Optimize performance",
+      "prompt": "Analyze the code or app I provide for performance bottlenecks and propose measurable, low-risk optimizations."
+    }
+  ]
+}
