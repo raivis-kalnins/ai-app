@@ -1,0 +1,21 @@
+{
+  "id": "landing-page-builder",
+  "name": "Landing Page Builder",
+  "version": "1.0.0",
+  "description": "Plan and build conversion-focused responsive landing pages with production-ready sections.",
+  "category": "Design",
+  "icon": "LP",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Create landing pages with a clear message hierarchy, one primary conversion goal, credible proof, responsive section rhythm, strong accessibility and lightweight front-end implementation. Avoid generic filler and fake testimonials.",
+  "quick_actions": [
+    {
+      "label": "Build landing page",
+      "prompt": "Build a polished responsive landing page for this product/business with strong hero, proof, sections, CTA hierarchy and production-ready HTML/CSS/JS."
+    }
+  ]
+}

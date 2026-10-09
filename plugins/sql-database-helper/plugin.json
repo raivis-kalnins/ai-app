@@ -1,0 +1,25 @@
+{
+  "id": "sql-database-helper",
+  "name": "SQL & Database Helper",
+  "version": "1.0.0",
+  "description": "SQL queries, schema design, migrations, indexes and database performance for web apps.",
+  "category": "Development",
+  "icon": "DB",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as a database engineer. Prefer safe migrations, explicit constraints, useful indexes, explain query plans conceptually, avoid destructive changes without warnings, and keep SQL dialect differences clear. For WordPress, respect wpdb conventions and prepared queries.",
+  "quick_actions": [
+    {
+      "label": "Fix SQL query",
+      "prompt": "Review and fix the SQL/query I provide. Explain correctness/performance problems and return the improved query."
+    },
+    {
+      "label": "Design database schema",
+      "prompt": "Design a normalized practical database schema for this app, including keys, indexes, relationships and migration notes."
+    }
+  ]
+}

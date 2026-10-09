@@ -57,7 +57,7 @@ async function listImageModels(force=false){
 }
 function detectIntent(input){
   const s=clean(input);
-  const image=/(generate|create|make|draw|render|design|produce|show|izveido|uzģenerē|uzzīmē|attēl|bilde|fotogr|imagen|image|picture|photo|illustration|bild|grafik|obraz|zdję|rysuj|нарис|изображ|зображ|paveiksl|pilt|kuva).{0,45}(image|picture|photo|illustration|logo|banner|attēl|bild|foto|imagen|obraz|zdję|изображ|зображ|paveiksl|kuva)|\b(image|picture|photo|illustration|logo|banner)\b.{0,35}(generate|create|draw|render)/i.test(s);
+  const image=/(generate|create|make|draw|render|design|compose|produce|show|izveido|uzģenerē|uzzīmē|attēl|bilde|fotogr|imagen|image|picture|photo|illustration|bild|grafik|obraz|zdję|rysuj|нарис|изображ|зображ|paveiksl|pilt|kuva).{0,55}(image|picture|photo|illustration|logo|banner|poster|flyer|card|collage|moodboard|social graphic|attēl|bild|foto|imagen|obraz|zdję|изображ|зображ|paveiksl|kuva)|\b(image|picture|photo|illustration|logo|banner|poster|flyer|card|collage|moodboard|social graphic)\b.{0,40}(generate|create|make|compose|design|draw|render)/i.test(s);
   if(image)return'image';
   const video=/(generate|create|make|render|izveido|uzģenerē|video|film|clip).{0,40}(video|film|clip|animāc|animation)|\bvideo\b/i.test(s);
   if(video)return'video';

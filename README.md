@@ -1,4 +1,38 @@
-# Free AI Hub 63 v0.6.2
+# Free AI Hub 63 v0.6.5
+
+
+
+## v0.6.5 multilingual image-composer reliability fix
+
+- Image prompts are now normalised before stock search, including common mobile typos such as `creat enice`, so filler words no longer become the search subject.
+- Latvian image requests are understood directly: phrases such as `izveidot ... attelu/bildi/kartiti` and `teksts/tekstu/uzraksts` trigger the image composer and preserve the requested Latvian overlay copy.
+- Common Latvian subjects are converted to search-friendly English equivalents (for example `Latvijas rudens` -> `Latvia autumn`) while place names remain intact.
+- Free-source search now tries multiple cleaned query variants and combines results instead of accepting the first weak variant.
+- LoremFlickr is no longer injected automatically because placeholder/hotlink reliability is inconsistent; it remains available as a manual source.
+- Broken third-party previews now retry through the app's restricted server-side image cache, and the composer tries both original and preview URLs before rejecting a source.
+- Requests such as `create ... image + text ...` now auto-build and save a finished design instead of stopping at the image grid.
+- Static/PWA cache is **v0.6.5**.
+
+## v0.6.4 free-source composer + developer toolbox
+
+- **Create instead of only search:** free web-image results can now be selected and composed in-browser into final 1080/1200/1400/1600px designs: romantic/greeting cards, social posts, posters, hero banners and moodboards. Composition-intent prompts can auto-pick the strongest results, render the design, save it to generated media and return the finished image in Chat.
+- **Safer remote source handling:** selected source images are fetched through a restricted cache route that accepts only public HTTP(S) hosts, re-checks redirects and refuses private/local addresses. Source/creator metadata remains visible in the composer and results.
+- **Smarter image prompts:** design text such as “Have a nice day!” is separated from the visual search query so it becomes card/poster copy instead of polluting image search.
+- **More coding/search grounding:** developer questions can merge public GitHub repository search, Stack Overflow, npm, Packagist and the WordPress.org plugin/theme directory results with DuckDuckGo/Wikipedia/SearXNG/Brave/Ollama. Research/current questions can additionally use Hacker News and arXiv.
+- **Stronger local assistant harness:** the system prompt and task hints now prioritise root-cause diagnosis, production-ready file-level fixes, security/accessibility/compatibility checks and source-grounded answers instead of generic advice.
+- **15 new bundled developer/design add-ons:** GitHub Repo Helper, API & JSON Helper, SQL & Database Helper, Debug & Error Fixer, Refactor Assistant, Test Generator, Regex & Validation Helper, Accessibility Audit, Landing Page Builder, Design System Helper, Image Composer Studio, WordPress Hooks Helper, WooCommerce Helper, Docs Writer and Deployment Checklist. A small core set is auto-enabled on upgrade; the rest remain one-click optional.
+- Static/PWA cache is **v0.6.4**.
+
+The composer combines existing source media; it does not change the underlying image licence. Keep and verify the original source/licence information before publishing.
+
+
+## v0.6.3 multi-source media + smarter local/search harness
+
+- Multi-source image discovery: Openverse, Wikimedia Commons, NASA Images and The Met work without developer keys; optional Unsplash, Pexels and Pixabay keys add broader photography. The UI also links the requested manual/icon libraries.
+- Image-result payloads are persisted in chat history, so image grids render again after a refresh.
+- Smart live grounding lets AI Chat search first for current/research questions, using DuckDuckGo, Wikipedia, SearXNG and optional Brave/Ollama Web Search.
+- Local AI Auto can prefer stronger installed Ollama models, including GPT-OSS 120B, GPT-OSS 20B, Qwen3-Coder 30B and Gemma 3 27B; local inference timeouts were increased for larger models.
+- Static cache is v0.6.3.
 
 
 ## v0.6.2 free web images + stronger image quality
@@ -109,8 +143,8 @@ A private, password-protected PHP 8+ AI workspace for `ai.63.lv`. It combines fr
 - Chat is cleaner and more document-like: assistant answers use a wide reading column, user messages remain compact, the composer stays close to the bottom, and existing Copy / Download / Copy code tools remain available.
 - Added real **multi-thread chat history**. Each conversation has its own thread ID/title and remains available for up to 30 days. Existing pre-v0.5 history is migrated into a legacy thread automatically.
 - Added a **Plugins / Add-ons** page with search, category cards, enable/disable controls, permissions display and install/remove support.
-- Bundled safe AI-skill add-ons include WordPress Expert, Code Reviewer, Research & Compare, UI/UX Designer, SEO & Content, E-commerce Growth, Web Performance and Security Checklist.
-- Enabled add-ons can add AI system context and quick-action chips to Chat. Fresh installs enable WordPress Expert, Code Reviewer and Research & Compare by default.
+- Bundled safe AI-skill add-ons include the original WordPress, code review, research, UI/UX, SEO, e-commerce, performance and security tools plus the v0.6.4 developer/design toolbox (GitHub, API/JSON, SQL, debugging, refactoring, tests, validation, accessibility, landing pages, design systems, image composition, WordPress hooks, WooCommerce, docs and deployment).
+- Enabled add-ons can add AI system context and quick-action chips to Chat. Fresh installs/first v0.6.4 migration enable a compact core: WordPress Expert, Code Reviewer, Research & Compare, GitHub Repo Helper, API & JSON Helper, Debug & Error Fixer, Free Image Composer Studio, WordPress Hooks & Gutenberg and WooCommerce Helper. Explicit user enable/disable choices are preserved.
 - Added safe custom add-on ZIP installation. A plugin ZIP contains one `plugin.json`; uploaded add-ons are manifest-based and **cannot execute arbitrary PHP or JavaScript**.
 - File retention is unchanged from v0.4.2: uploads, generated files/media and search reports auto-delete after **48 hours**; chat history remains **30 days**.
 

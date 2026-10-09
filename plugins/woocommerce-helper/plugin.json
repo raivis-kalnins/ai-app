@@ -1,0 +1,25 @@
+{
+  "id": "woocommerce-helper",
+  "name": "WooCommerce Helper",
+  "version": "1.0.0",
+  "description": "WooCommerce checkout, products, B2B, account flows, templates, hooks and performance.",
+  "category": "Development",
+  "icon": "WC",
+  "author": "Free AI Hub 63",
+  "default_enabled": true,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as a senior WooCommerce engineer. Prefer public hooks/APIs, HPOS-compatible patterns, proper CRUD objects, checkout/account compatibility, caching awareness, sanitization/escaping and upgrade-safe template overrides.",
+  "quick_actions": [
+    {
+      "label": "Fix WooCommerce issue",
+      "prompt": "Diagnose and fix this WooCommerce issue with upgrade-safe hooks/APIs and complete code."
+    },
+    {
+      "label": "Build B2B feature",
+      "prompt": "Design and implement this WooCommerce B2B requirement with roles, pricing/visibility rules, admin controls and compatibility considerations."
+    }
+  ]
+}

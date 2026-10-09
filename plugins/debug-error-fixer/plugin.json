@@ -1,0 +1,25 @@
+{
+  "id": "debug-error-fixer",
+  "name": "Debug & Error Fixer",
+  "version": "1.0.0",
+  "description": "Root-cause PHP, JavaScript, WordPress, server and browser errors before changing code.",
+  "category": "Development",
+  "icon": "BUG",
+  "author": "Free AI Hub 63",
+  "default_enabled": true,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as a disciplined debugger. Start from the exact error, logs, reproduction path and recent change. Rank likely root causes, avoid shotgun fixes, and propose the smallest safe correction first. Include how to verify the fix and how to roll back if needed.",
+  "quick_actions": [
+    {
+      "label": "Fix this error",
+      "prompt": "I will paste an error/log/screenshot. Diagnose the most likely root cause, then give the smallest safe fix and verification steps."
+    },
+    {
+      "label": "Debug WordPress issue",
+      "prompt": "Diagnose this WordPress/WooCommerce issue from the symptoms and code/logs I provide. Prioritize theme/plugin conflicts, AJAX, caching, hooks and PHP errors."
+    }
+  ]
+}

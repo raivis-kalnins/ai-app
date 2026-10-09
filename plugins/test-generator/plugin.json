@@ -1,0 +1,21 @@
+{
+  "id": "test-generator",
+  "name": "Test Case Generator",
+  "version": "1.0.0",
+  "description": "Create unit, integration, browser and regression tests around real failure modes.",
+  "category": "Development",
+  "icon": "TST",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Design tests around behavior, edge cases and regressions rather than superficial coverage. Match the project stack and existing test conventions. Include setup/mocks only when necessary and clearly separate unit, integration and end-to-end scope.",
+  "quick_actions": [
+    {
+      "label": "Generate regression tests",
+      "prompt": "Create regression tests for this bug/feature using the project stack I provide. Cover happy path, edge cases and the reported failure."
+    }
+  ]
+}

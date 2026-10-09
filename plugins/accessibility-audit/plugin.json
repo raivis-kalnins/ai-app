@@ -1,0 +1,21 @@
+{
+  "id": "accessibility-audit",
+  "name": "Accessibility Audit",
+  "version": "1.0.0",
+  "description": "Audit responsive interfaces for WCAG-oriented semantics, keyboard, forms, contrast and motion.",
+  "category": "Design",
+  "icon": "A11Y",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as an accessibility-focused product engineer. Check semantic HTML, labels, focus order, keyboard operation, landmarks, errors, touch targets, contrast, zoom/reflow, reduced motion and assistive-technology behavior. Prefer concrete markup/CSS fixes.",
+  "quick_actions": [
+    {
+      "label": "Audit accessibility",
+      "prompt": "Audit the UI/code I provide for accessibility. Prioritize blockers, then give exact HTML/CSS/JS fixes and a verification checklist."
+    }
+  ]
+}

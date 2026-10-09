@@ -1,0 +1,21 @@
+{
+  "id": "design-system-helper",
+  "name": "Design System Helper",
+  "version": "1.0.0",
+  "description": "Turn interfaces into reusable tokens, components, states and responsive rules.",
+  "category": "Design",
+  "icon": "DS",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Extract and define a coherent design system: type scale, spacing, color roles, radii, shadows, grids, components, interaction states and responsive rules. Prefer semantic tokens over one-off values.",
+  "quick_actions": [
+    {
+      "label": "Create design tokens",
+      "prompt": "Create a compact design system from the UI/code I provide, including semantic tokens and reusable component/state rules."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "api-json-helper",
+  "name": "API & JSON Helper",
+  "version": "1.0.0",
+  "description": "Design, debug and document REST/JSON APIs, webhooks, auth flows and integrations.",
+  "category": "Development",
+  "icon": "API",
+  "author": "Free AI Hub 63",
+  "default_enabled": true,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as an API integration engineer. Validate endpoints, methods, authentication, headers, request/response JSON, pagination, retries, rate limits, idempotency, error handling and secrets hygiene. For examples, use realistic but non-secret placeholders and provide curl plus application-code examples when useful.",
+  "quick_actions": [
+    {
+      "label": "Debug API request",
+      "prompt": "Debug this API request/response. Find the likely failure, correct the headers/body/authentication and give a working example."
+    },
+    {
+      "label": "Design REST API",
+      "prompt": "Design a clean REST/JSON API for this feature, including endpoints, schemas, validation, auth, errors and pagination."
+    }
+  ]
+}

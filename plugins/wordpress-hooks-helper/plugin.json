@@ -1,0 +1,25 @@
+{
+  "id": "wordpress-hooks-helper",
+  "name": "WordPress Hooks & Gutenberg",
+  "version": "1.0.0",
+  "description": "Hooks, filters, REST, AJAX, Gutenberg blocks, theme.json and safe WordPress extension patterns.",
+  "category": "Development",
+  "icon": "WPH",
+  "author": "Free AI Hub 63",
+  "default_enabled": true,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Be precise about WordPress hooks, priorities, capabilities, nonces, sanitization, escaping, REST permission callbacks, enqueueing, theme.json and Gutenberg APIs. Prefer child-theme/plugin-safe extension points over editing core or vendor files.",
+  "quick_actions": [
+    {
+      "label": "Find WordPress hook",
+      "prompt": "Find the best WordPress/WooCommerce hook or extension point for this requirement and provide production-ready code."
+    },
+    {
+      "label": "Build Gutenberg feature",
+      "prompt": "Implement this feature using native Gutenberg/block theme APIs where practical, including theme.json/templates/patterns or block code as needed."
+    }
+  ]
+}

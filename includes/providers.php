@@ -99,9 +99,11 @@ function aih_provider_catalog(): array {
 function aih_model_presets(): array {
     return [
         ['family'=>'Auto · best installed local model','provider'=>'ollama_local','model'=>'auto','command'=>'Install one or more presets below; Auto selects by task'],
+        ['family'=>'GPT-OSS 120B · strongest high-memory reasoning','provider'=>'ollama_local','model'=>'gpt-oss:120b','command'=>'ollama pull gpt-oss:120b'],
         ['family'=>'GPT-OSS 20B · reasoning / agents','provider'=>'ollama_local','model'=>'gpt-oss:20b','command'=>'ollama pull gpt-oss:20b'],
         ['family'=>'Qwen3-Coder 30B · coding / agents','provider'=>'ollama_local','model'=>'qwen3-coder:30b','command'=>'ollama pull qwen3-coder:30b'],
         ['family'=>'Qwen3 8B · balanced','provider'=>'ollama_local','model'=>'qwen3:8b','command'=>'ollama pull qwen3:8b'],
+        ['family'=>'Gemma 3 27B · strong multimodal local','provider'=>'ollama_local','model'=>'gemma3:27b','command'=>'ollama pull gemma3:27b'],
         ['family'=>'Gemma 3 12B · multimodal capable','provider'=>'ollama_local','model'=>'gemma3:12b','command'=>'ollama pull gemma3:12b'],
         ['family'=>'Gemma 3 4B · lighter local','provider'=>'ollama_local','model'=>'gemma3:4b','command'=>'ollama pull gemma3:4b'],
         ['family'=>'DeepSeek R1 8B · reasoning','provider'=>'ollama_local','model'=>'deepseek-r1:8b','command'=>'ollama pull deepseek-r1:8b'],
@@ -227,10 +229,10 @@ function aih_select_ollama_model(string $chatUrl,string $task='chat',string $fal
 function aih_provider_call(string $id,array $messages,array $settings,string $task='chat'): array {
     $p=$settings['providers']??[]; $keys=$p['keys']??[]; $models=$p['models']??[]; $model=(string)($models[$id]??'');
     if(in_array($id,['puter','webllm_browser'],true))return ['ok'=>false,'code'=>0,'error'=>'Client-side provider','headers'=>[]];
-    if($id==='ollama_local'){$url=(string)($p['ollama_local_url']??'http://127.0.0.1:11434/v1/chat/completions');if($model===''||strtolower($model)==='auto')$model=aih_select_ollama_model($url,$task,'qwen3:8b');$r=aih_openai_call($id,$url,'',$model,$messages,[],18);$r['model']=$model;return $r;}
-    if($id==='lmstudio_local') return aih_openai_call($id,(string)($p['lmstudio_local_url']??'http://127.0.0.1:1234/v1/chat/completions'),'',$model,$messages,[],12);
-    if($id==='llamacpp_local') return aih_openai_call($id,(string)($p['llamacpp_local_url']??'http://127.0.0.1:8080/v1/chat/completions'),'',$model,$messages,[],12);
-    if($id==='localai_local') return aih_openai_call($id,(string)($p['localai_local_url']??'http://127.0.0.1:8080/v1/chat/completions'),'',$model,$messages,[],12);
+    if($id==='ollama_local'){$url=(string)($p['ollama_local_url']??'http://127.0.0.1:11434/v1/chat/completions');if($model===''||strtolower($model)==='auto')$model=aih_select_ollama_model($url,$task,'qwen3:8b');$r=aih_openai_call($id,$url,'',$model,$messages,[],120);$r['model']=$model;return $r;}
+    if($id==='lmstudio_local') return aih_openai_call($id,(string)($p['lmstudio_local_url']??'http://127.0.0.1:1234/v1/chat/completions'),'',$model,$messages,[],90);
+    if($id==='llamacpp_local') return aih_openai_call($id,(string)($p['llamacpp_local_url']??'http://127.0.0.1:8080/v1/chat/completions'),'',$model,$messages,[],90);
+    if($id==='localai_local') return aih_openai_call($id,(string)($p['localai_local_url']??'http://127.0.0.1:8080/v1/chat/completions'),'',$model,$messages,[],90);
     if($id==='aihorde_text') return aih_horde_text_call($messages,$settings);
     if($id==='groq') return aih_openai_call($id,'https://api.groq.com/openai/v1/chat/completions',(string)($keys['groq']??''),$model,$messages);
     if($id==='openrouter') return aih_openai_call($id,'https://openrouter.ai/api/v1/chat/completions',(string)($keys['openrouter']??''),$model,$messages,['HTTP-Referer: '.((!empty($_SERVER['HTTP_HOST']))?'https://'.$_SERVER['HTTP_HOST']:'https://localhost'),'X-Title: Free AI Hub 63']);

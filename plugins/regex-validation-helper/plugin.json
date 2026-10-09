@@ -1,0 +1,21 @@
+{
+  "id": "regex-validation-helper",
+  "name": "Regex & Validation Helper",
+  "version": "1.0.0",
+  "description": "Build and explain regex, input validation, sanitisation and parsing rules safely.",
+  "category": "Development",
+  "icon": "RX",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "For regex and validation, prefer readable bounded expressions, explain anchors/groups, test positive and negative examples, avoid catastrophic backtracking, and distinguish validation from sanitization.",
+  "quick_actions": [
+    {
+      "label": "Build regex",
+      "prompt": "Create a safe readable regex for this requirement and include positive/negative test examples."
+    }
+  ]
+}

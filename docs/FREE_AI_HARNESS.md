@@ -7,7 +7,7 @@ The app intentionally avoids adding a heavy Python MLOps dependency to the PHP r
 1. Stable Diffusion WebUI / Forge on your own hardware — no cloud quota.
 2. ComfyUI on your own hardware — no cloud quota.
 3. Configured cloud free-tier/credit providers — only when credentials are present.
-4. Openverse + Wikimedia Commons — no-key search for existing openly licensed/public-domain web images. Results retain original/source/licence links and are labelled as web images, never as AI-generated media.
+4. Openverse + Wikimedia Commons + NASA Images + The Met — no-key search for existing openly licensed/public-domain web images. Results retain original/source/licence links and are labelled as web images, never as AI-generated media. Selected results can be composed locally in the browser into cards/posters/social graphics/heroes/moodboards without changing their underlying licence.
 5. AI Horde anonymous community queue — no account/key required, final no-key generative fallback. Accepted jobs are asynchronous and stay queued instead of being cancelled by a PHP request timeout.
 
 Puter is not an automatic image fallback. For ordinary photo/reference prompts, web-image search is intentionally before AI Horde so a real photograph/reference can be used instead of a weak anonymous generation when no stronger generator is available. Clearly stylised/original design prompts may move AI Horde ahead of web search while retaining web images as a fallback.
@@ -35,4 +35,12 @@ Long-running community inference is represented as an accepted job ID plus `pend
 - Explicit illustration/anime prompts are allowed to select stylised models.
 - AI Horde generations marked as censored are rejected rather than displayed as a valid black image.
 - Free web-image search removes generic request filler before querying and ranks larger, more relevant results higher.
-- Do not proxy arbitrary external image URLs through the server. Keep source/licence navigation explicit to avoid turning the app into an unrestricted fetch endpoint.
+- Composer image caching is deliberately restricted to public HTTP(S) hosts, re-validates redirects, caps file size and accepts image content only. Do not weaken this into an unrestricted fetch endpoint.
+
+## Search / coding grounding
+
+Normal web grounding can merge DuckDuckGo, Wikipedia, SearXNG, optional Brave Search and optional Ollama Web Search. When the query is clearly developer-oriented, the harness can also add public GitHub repository, Stack Overflow, npm and Packagist results. Research/current queries can add Hacker News and arXiv. These are evidence inputs, not authority by themselves: the answering model should prefer official documentation/repositories when available and state uncertainty rather than inventing missing facts.
+
+## Free-source design composition
+
+The browser composer is intentionally deterministic rather than another paid image-generation dependency. It can use up to four selected search results, crop them into a selected template, add overlay text and export PNG. Clear “create card/poster/social graphic/moodboard from available sources” prompts can auto-pick results and return a saved composed image in Chat. Source/creator metadata remains attached to the result workflow, and composition never overrides the source licence.

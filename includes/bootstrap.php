@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const AIH_VERSION = '0.6.2';
+const AIH_VERSION = '0.6.5';
 const AIH_ROOT = __DIR__ . '/..';
 const AIH_STORAGE = AIH_ROOT . '/storage';
 const AIH_UPLOADS = AIH_STORAGE . '/uploads';
@@ -94,8 +94,12 @@ function aih_default_settings(): array {
         'search' => [
             'searxng_url'=>'',
             'ollama_web_key'=>'',
-            'max_results'=>40,
+            'max_results'=>60,
             'ai_enrich'=>true,
+            'brave_search_key'=>'',
+            'smart_grounding'=>true,
+            'developer_grounding'=>true,
+            'research_sources'=>true,
         ],
         'integrations' => [
             'figma' => [
@@ -129,6 +133,9 @@ function aih_default_settings(): array {
             'aihorde_model'=>'',
             'aihorde_timeout'=>180,
             'aihorde_steps'=>16,
+            'unsplash_access_key'=>'',
+            'pexels_api_key'=>'',
+            'pixabay_api_key'=>'',
         ],
         'security' => [
             'hcaptcha_enabled'=>false,
@@ -139,7 +146,7 @@ function aih_default_settings(): array {
             'language'=>'en',
             'theme'=>'light',
         ],
-        'system_prompt' => 'You are a careful assistant for web development, WordPress, app development and structured research. Never invent source facts. When source data is missing, say it is missing.',
+        'system_prompt' => 'You are Free AI Hub 63, a practical local-first assistant for web development, WordPress, apps, coding, design, research and everyday work. Infer the user goal, output format and constraints before answering. Work through difficult tasks privately, verify assumptions, check edge cases and deliver the best final result without exposing hidden reasoning. Prefer complete production-ready code, exact file-level fixes, accessible responsive UI and concrete next actions. For debugging, identify the most likely root cause before changing code. For web development, preserve existing architecture unless a change is justified and include security, performance and compatibility considerations. When live web sources are supplied, ground claims only in those sources and never invent citations, versions, prices or missing facts. If evidence is incomplete, say what is uncertain. Keep answers clear, decisive and useful rather than verbose.',
         'created_at' => date(DATE_ATOM),
     ];
 }
@@ -220,6 +227,7 @@ function aih_migrate_settings(array $current): array {
     if (($current['providers']['models']['ollama_local'] ?? '') === 'qwen3:8b') $merged['providers']['models']['ollama_local']='auto';
     // v0.6.2: raise the old fast AI Horde default slightly for better detail while retaining user overrides.
     if ((int)($current['images']['aihorde_steps'] ?? 0) === 10) $merged['images']['aihorde_steps']=16;
+    // v0.6.3 keeps existing custom prompts/keys but adds smart grounding and more image/search connections via merge_missing.
     return $merged;
 }
 
@@ -368,10 +376,11 @@ function aih_chat_history_load(?string $chatId=null): array {
     if($chatId!=='')$out=array_values(array_filter($out,fn($x)=>(string)($x['chat_id']??'legacy')===$chatId));
     return array_slice($out,-1500);
 }
-function aih_chat_history_add(string $role,string $content,string $meta='',string $kind='text',string $chatId=''): array {
+function aih_chat_history_add(string $role,string $content,string $meta='',string $kind='text',string $chatId='',mixed $data=null): array {
     $role=in_array($role,['user','assistant'],true)?$role:'assistant';$content=trim($content);$chatId=aih_chat_id($chatId);if($chatId==='')$chatId=aih_new_id('chat');
     if($content==='')return ['chat_id'=>$chatId,'message'=>null];
-    $row=['id'=>aih_new_id('msg'),'chat_id'=>$chatId,'at'=>time(),'role'=>$role,'content'=>substr($content,0,80000),'meta'=>substr(trim($meta),0,500),'kind'=>substr(preg_replace('/[^a-z0-9_-]/i','',$kind)?:'text',0,32)];
+    $safeData=null;if(is_array($data)){ $json=json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE); if(is_string($json)&&strlen($json)<=120000)$safeData=$data; }
+    $row=['id'=>aih_new_id('msg'),'chat_id'=>$chatId,'at'=>time(),'role'=>$role,'content'=>substr($content,0,80000),'meta'=>substr(trim($meta),0,500),'kind'=>substr(preg_replace('/[^a-z0-9_-]/i','',$kind)?:'text',0,32)];if($safeData!==null)$row['data']=$safeData;
     aih_update_json(aih_chat_history_path(),function($rows)use($row){$rows=is_array($rows)?$rows:[];$cut=time()-aih_chat_retention_seconds();$rows=array_values(array_filter($rows,fn($x)=>is_array($x)&&(int)($x['at']??0)>=$cut));foreach($rows as&$r)if(is_array($r)&&empty($r['chat_id']))$r['chat_id']='legacy';unset($r);$rows[]=$row;return array_slice($rows,-2500);},[]);
     return ['chat_id'=>$chatId,'message'=>$row];
 }

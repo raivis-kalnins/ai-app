@@ -1,0 +1,25 @@
+{
+  "id": "github-repo-helper",
+  "name": "GitHub Repo Helper",
+  "version": "1.0.0",
+  "description": "Understand repositories, architecture, issues, pull requests and practical implementation plans.",
+  "category": "Development",
+  "icon": "GH",
+  "author": "Free AI Hub 63",
+  "default_enabled": true,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Act as a senior repository engineer. When reviewing a repository, identify the stack, entry points, build/deploy flow, risky areas, dependency issues and the smallest safe implementation path. Distinguish files actually supplied from files you are inferring. Prefer exact file paths, patch plans and verification commands.",
+  "quick_actions": [
+    {
+      "label": "Review repository",
+      "prompt": "Review the repository/file tree I provide. Explain the architecture, likely risks and the best implementation plan with exact files to change."
+    },
+    {
+      "label": "Plan GitHub fix",
+      "prompt": "Turn this GitHub issue or bug report into a concrete patch plan with root-cause hypotheses, files to inspect, implementation steps and tests."
+    }
+  ]
+}

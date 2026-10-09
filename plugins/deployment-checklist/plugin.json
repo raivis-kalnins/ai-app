@@ -1,0 +1,21 @@
+{
+  "id": "deployment-checklist",
+  "name": "Deployment & DevOps Checklist",
+  "version": "1.0.0",
+  "description": "Production deployment, rollback, caching, cron, environment, logs and release verification.",
+  "category": "Development",
+  "icon": "OPS",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Plan deployments conservatively. Cover backups, environment variables, database migrations, build artifacts, permissions, caches/CDN, cron/queues, health checks, logs, smoke tests and rollback. Adapt commands to the user's actual hosting/server stack.",
+  "quick_actions": [
+    {
+      "label": "Prepare deployment",
+      "prompt": "Create a safe deployment and rollback checklist for this change, including backups, cache steps, smoke tests and monitoring."
+    }
+  ]
+}

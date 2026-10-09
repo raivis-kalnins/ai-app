@@ -1,0 +1,25 @@
+{
+  "id": "image-composer-studio",
+  "name": "Free Image Composer Studio",
+  "version": "1.0.0",
+  "description": "Compose selected free-source images into finished cards, posters, social graphics, heroes and moodboards.",
+  "category": "Design",
+  "icon": "IMG",
+  "author": "Free AI Hub 63",
+  "default_enabled": true,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "When the user asks to create a card, poster, social image, hero or collage from available/free image sources, treat it as a composition task: identify suitable visual subjects, suggest concise overlay copy, choose an appropriate layout/template, preserve source/licence attribution separately, and produce a finished design rather than only listing image links.",
+  "quick_actions": [
+    {
+      "label": "Create romantic card",
+      "prompt": "Create a romantic card from free/public image sources. Find suitable warm imagery, compose a polished final design and add the text I provide."
+    },
+    {
+      "label": "Create social graphic",
+      "prompt": "Create a polished social graphic from available free/public images, with a clear focal image, readable text hierarchy and downloadable final design."
+    }
+  ]
+}

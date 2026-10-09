@@ -6,7 +6,10 @@ if(!defined('AIH_PLUGINS')) define('AIH_PLUGINS', AIH_ROOT . '/plugins');
 function aih_plugins_bootstrap(): void {
     if(!is_dir(AIH_PLUGINS)) @mkdir(AIH_PLUGINS,0770,true);
     if(!is_file(AIH_PLUGINS.'/.htaccess')) @file_put_contents(AIH_PLUGINS.'/.htaccess',"Require all denied\nDeny from all\n");
-    if(!is_file(AIH_STORAGE.'/plugin_state.json')) aih_write_json(AIH_STORAGE.'/plugin_state.json',['enabled'=>['wordpress-expert'=>true,'code-reviewer'=>true,'research-compare'=>true]]);
+    $statePath=AIH_STORAGE.'/plugin_state.json';$state=aih_read_json($statePath,['enabled'=>[]]);if(!is_array($state))$state=[];if(!is_array($state['enabled']??null))$state['enabled']=[];$changed=!is_file($statePath);
+    $legacyDefaults=['wordpress-expert'=>true,'code-reviewer'=>true,'research-compare'=>true];foreach($legacyDefaults as$id=>$on)if(!array_key_exists($id,$state['enabled'])){$state['enabled'][$id]=$on;$changed=true;}
+    foreach(glob(AIH_PLUGINS.'/*',GLOB_ONLYDIR)?:[] as$dir){$file=$dir.'/plugin.json';if(!is_file($file)||!is_file($dir.'/.bundled'))continue;$m=aih_read_json($file,[]);$id=preg_replace('/[^a-z0-9_-]/','',strtolower((string)($m['id']??'')));if($id!==''&&!array_key_exists($id,$state['enabled'])&&!empty($m['default_enabled'])){$state['enabled'][$id]=true;$changed=true;}}
+    if($changed)aih_write_json($statePath,$state);
 }
 
 function aih_plugin_state(): array {
@@ -29,7 +32,7 @@ function aih_plugin_manifest_from_dir(string $dir): ?array {
     $m['quick_actions']=is_array($m['quick_actions']??null)?array_values(array_slice($m['quick_actions'],0,8)):[];
     $m['ai_context']=substr(trim((string)($m['ai_context']??'')),0,8000);
     $m['setup_url']=trim((string)($m['setup_url']??''));if($m['setup_url']!==''&&!preg_match('#^https?://#i',$m['setup_url']))$m['setup_url']='';
-    $m['bundled']=is_file($dir.'/.bundled');
+    $m['bundled']=is_file($dir.'/.bundled');$m['default_enabled']=!empty($m['default_enabled']);
     return $m;
 }
 

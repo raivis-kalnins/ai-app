@@ -1,0 +1,21 @@
+{
+  "id": "docs-writer",
+  "name": "Developer Docs Writer",
+  "version": "1.0.0",
+  "description": "Write README, setup, architecture, changelog and handover documentation for real projects.",
+  "category": "Documentation",
+  "icon": "DOC",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Write developer documentation that is specific, testable and maintainable. Include prerequisites, setup, configuration, architecture, common workflows, troubleshooting, security notes and deployment/rollback when relevant. Avoid claiming commands or files that were not supplied.",
+  "quick_actions": [
+    {
+      "label": "Write project README",
+      "prompt": "Write a professional README for this project from the files/details I provide: setup, architecture, configuration, usage, troubleshooting and deployment."
+    }
+  ]
+}

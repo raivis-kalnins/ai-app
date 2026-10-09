@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.6.5
+
+- Fixed image-search prompt cleanup for mobile typos and Latvian phrasing; `Latvijas rudens` now resolves to concise reusable-source queries such as `Latvia autumn`.
+- Added Latvian composer intent and overlay-text extraction, so `izveidot ... attelu/bildi/kartiti + teksts/tekstu` can auto-compose a finished graphic.
+- Search now combines multiple cleaned variants from Openverse/Wikimedia and configured photo APIs instead of stopping on the first weak variant.
+- Removed LoremFlickr from automatic results; it remains a manual source because placeholder/hotlink reliability can be inconsistent.
+- Added preview recovery through the restricted server image cache and a second composer fetch attempt using preview URLs.
+- Generic `create image + text` prompts now trigger auto-compose/auto-save, not just explicit card/poster wording.
+- Bumped static/PWA cache to v0.6.5.
+
+## 0.6.4
+
+- Added a client-side Free Source Composer that turns selected search results into final romantic/greeting cards, social posts, posters, hero banners and moodboards rather than only listing images.
+- Added composition-intent detection and overlay-text extraction so prompts such as “romantic card … text Have a nice day!” search for useful visual material and render the requested text in the final design.
+- Added restricted public-image caching with private/local-network rejection and redirect checks so canvas exports can use selected third-party images without exposing a general server-side fetch proxy.
+- Added PNG download plus generated-media save for composed designs; Chat can auto-return the finished composed image for clear creation prompts.
+- Added free developer grounding from GitHub repositories, Stack Overflow, npm, Packagist and the WordPress.org plugin/theme directory, plus Hacker News and arXiv for broader research/current queries.
+- Strengthened local/task routing prompts for root-cause debugging, complete code, file-level fixes, security, accessibility, compatibility and verification.
+- Added 15 bundled manifest-only developer/design add-ons, with a small useful core auto-enabled on upgrade while preserving every existing enable/disable choice.
+- Added Settings toggles for developer grounding and research-source expansion.
+- Bumped static/PWA cache to v0.6.4.
+
+## 0.6.3
+
+- Fixed web-image chat history so complete image result grids survive reloads instead of degrading to a `[Free web images]` marker.
+- Expanded automatic free image search to Openverse, Wikimedia Commons, NASA Images, The Met Open Access, optional Unsplash/Pexels/Pixabay APIs, and a low-priority LoremFlickr fallback.
+- Added quick links for Freepik, Burst, StockSnap, Kaboompics, Gratisography, Rawpixel, unDraw, SVG Repo, Lucide, OpenMoji, Reshot, Lorem Picsum and other requested free resources without pretending manual libraries are unlimited APIs.
+- Added preview fallback handling for remote libraries that block hotlinking.
+- Smart Search now merges DuckDuckGo, Wikipedia, up to three SearXNG instances, optional Brave Search and optional Ollama Web Search.
+- AI Chat can automatically ground current/research questions with live search results and reports the search engines used.
+- Strengthened local-model routing with GPT-OSS 120B and Gemma 3 27B presets, plus longer local inference timeouts for large models.
+- Bumped static/PWA cache to v0.6.3.
+
 ## 0.6.2
 - Added `Free web images` as a no-key image provider using Openverse and Wikimedia Commons. Results render as a responsive gallery in Chat and Media Studio with original/source/licence links.
 - Auto image routing now tries free web-image search before AI Horde for ordinary photo/reference prompts when local/configured generators are unavailable. Clearly stylised/original design prompts keep generation first. Older custom image orders are migrated by inserting `free_web` immediately before `aihorde` as the normal fallback.

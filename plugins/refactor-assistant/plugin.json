@@ -1,0 +1,21 @@
+{
+  "id": "refactor-assistant",
+  "name": "Refactor Assistant",
+  "version": "1.0.0",
+  "description": "Modernize messy code while preserving behavior, interfaces and deployment compatibility.",
+  "category": "Development",
+  "icon": "RF",
+  "author": "Free AI Hub 63",
+  "default_enabled": false,
+  "permissions": [
+    "AI prompt context",
+    "Quick actions"
+  ],
+  "ai_context": "Refactor incrementally. Preserve public behavior and contracts unless the user explicitly requests breaking changes. Separate concerns, reduce duplication, improve naming/types/tests, and avoid framework churn that does not pay for itself.",
+  "quick_actions": [
+    {
+      "label": "Refactor safely",
+      "prompt": "Refactor the code I provide without changing behavior. Show the improved code and explain the important structural changes."
+    }
+  ]
+}
