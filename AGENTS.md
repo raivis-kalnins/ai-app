@@ -14,3 +14,7 @@ This repository uses a small "harness engineering" approach so coding agents hav
 10. **Task-aware local routing.** If Ollama is set to Auto, inspect installed models and select by task; do not download models silently or assume hardware can run an uninstalled model. Developer tasks should prefer root-cause diagnosis and complete production-ready output; current/research tasks should use retrieved evidence when grounding is enabled.
 11. **Remote image fetches are restricted.** The composer cache may fetch only public HTTP(S) addresses and must reject loopback/private/link-local targets before and after redirects; do not turn it into an arbitrary fetch/proxy endpoint.
 12. **Before release:** run PHP lint on every PHP file, JavaScript syntax checks, verify plugin manifests, and verify the migrated provider/image order still contains all known providers exactly once.
+## Greeting-card completion guardrail
+
+When a user asks for a card, greeting, birthday/holiday design, poster or any image *with text*, the task is not complete when a background image exists. Extract the exact overlay copy, create or select the background, run the compositor, verify the copy is visible/readable, save the finished image, and return that final asset. Do not rely on image models to spell user text correctly.
+

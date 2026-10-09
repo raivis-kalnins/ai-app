@@ -1,5 +1,38 @@
-# Free AI Hub 63 v0.6.5
+# Free AI Hub 63 v0.6.8
 
+## v0.6.8 Premium UI + Fast Cards
+
+- Stronger Inter/Manrope UI typography, higher text contrast and refined panels/controls in both light and dark modes. The CSP now explicitly permits the Google Fonts stylesheet/font hosts used by card typography, so Great Vibes / Playfair Display can actually render instead of silently falling back.
+- **Fast** is the default image mode. Greeting cards prefer strong reusable photography first and do not sit in very long anonymous AI Horde queues. **Balanced** permits a short queue; **Quality** allows long AI Horde waits when the user deliberately wants them.
+- Auto AI Horde jobs have a configurable queue ceiling (45 seconds by default in Fast mode). Over-limit jobs are cancelled and the router moves on instead of showing estimates such as 20+ minutes / hundreds of positions.
+- Free-image discovery caches successful results for 15 minutes and reduces duplicate external calls. Configured Unsplash, Pexels and Pixabay are searched ahead of Openverse/Wikimedia and card searches request portrait-oriented results where supported.
+- Card search/ranking favours warm light, bokeh, coffee/candles/flowers/golden leaves and attractive portrait composition while penalising archive/documentary/road/construction imagery.
+- Premium Editorial is the default card style with a darker local text readability layer, stronger cream/gold script treatment and no tiny source-credit text burned into the exported artwork. Source/licence details remain available in the result UI.
+- Static/PWA cache is **v0.6.8**.
+
+
+
+
+## v0.6.7 Beautiful Greeting Card Studio
+
+- Greeting cards now use a richer full-bleed design treatment with improved colour, vignette, premium typography, decorative accents and localized text contrast instead of the washed-out v0.6.6 overlay.
+- Added Elegant Script, Luxury Glow, Modern Clean and Minimal styles with Auto/Top/Centre/Bottom text placement.
+- Card requests prefer a purpose-built generated background before reusable web photos when free/local generation is available, then always add the exact greeting in the browser composer.
+- Free-source fallback ranking now favours beautiful portrait/warm/cozy imagery and avoids low-value documentary results where possible.
+- Great Vibes / Playfair Display / Montserrat can load from Google Fonts for better card typography, with browser/system fallbacks when offline.
+- Static/PWA cache is **v0.6.7**.
+
+
+## v0.6.6 Smart Greeting Card Builder
+
+- Card/greeting intent is now detected independently of the external AI router, including Latvian inflections such as `kartiņa/kartiņu`, `apsveikums`, `dzimšanas diena`, `Ziemassvētki` and common typo `ridens` -> `rudens`.
+- Requests such as `Skaistu rudens kartiņu ar tekstu - Jauku dienu!` are split into a visual/background request plus the exact overlay copy and are routed as image-composition tasks automatically.
+- Generated backgrounds from Local SD/Forge, ComfyUI, configured image APIs or AI Horde are post-processed by the browser composer so the requested text is actually placed on the final saved PNG instead of returning a plain background.
+- Free-source card composition still works with Openverse/Wikimedia/etc.; if automatic source composition cannot fetch the selected media, Chat can fall back to an AI Horde background and apply the text overlay there.
+- Added dedicated Greeting, Autumn, Birthday and Christmas/New Year templates alongside Romantic, Social, Poster, Hero and Moodboard formats. Card templates use a stronger readability layer, decorative accents, automatic text fitting, script-style typography, outline/shadow and safe margins.
+- Added sensible default greeting copy when a card type is clear but no text is supplied, including Latvian defaults such as `Daudz laimes!`, `Jauku dienu!` and `Priecīgus svētkus!`.
+- Upgraded the bundled Image Composer add-on with one-click Greeting, Birthday, Autumn, Romantic and Christmas card actions.
+- Static/PWA cache is **v0.6.6**.
 
 
 ## v0.6.5 multilingual image-composer reliability fix
@@ -512,3 +545,8 @@ The app automatically refreshes long-lived OAuth access using the refresh token 
 Settings now stores a Figma Team ID and optional projects/folders scopes. App & WP Builder can load accessible Figma projects/folders and files when the OAuth app is eligible, or use a direct Figma design URL as a universal fallback. The new **Figma -> Bootstrap 5 Gutenberg Builder Theme** target creates an installable block theme scaffold and, when AI is available, uses Figma page/frame metadata as implementation context.
 
 Settings also has a **Clear cache & refresh** maintenance action. It clears temporary search/application cache and provider cooldown state only; it does not delete uploads, generated files, reports, chat history, settings or Figma OAuth tokens.
+
+
+## v0.6.8 premium UI + speed
+
+Fast image mode is the default. Long anonymous AI Horde queues are skipped automatically in Auto mode, free-image searches are cached, premium photo APIs are preferred when configured, and light/dark UI typography has stronger contrast. Choose Balanced or Quality in Settings if you prefer longer community-generation waits.

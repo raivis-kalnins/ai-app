@@ -1,8 +1,8 @@
 {
   "id": "image-composer-studio",
-  "name": "Free Image Composer Studio",
-  "version": "1.0.0",
-  "description": "Compose selected free-source images into finished cards, posters, social graphics, heroes and moodboards.",
+  "name": "Greeting Card & Image Composer Studio",
+  "version": "1.2.0",
+  "description": "Create polished greeting cards, birthday cards, posters and social graphics with premium typography, generated or free-source backgrounds, selectable visual styles and readable text placement.",
   "category": "Design",
   "icon": "IMG",
   "author": "Free AI Hub 63",
@@ -11,15 +11,31 @@
     "AI prompt context",
     "Quick actions"
   ],
-  "ai_context": "When the user asks to create a card, poster, social image, hero or collage from available/free image sources, treat it as a composition task: identify suitable visual subjects, suggest concise overlay copy, choose an appropriate layout/template, preserve source/licence attribution separately, and produce a finished design rather than only listing image links.",
+  "ai_context": "Treat cards, greetings, birthdays, Christmas/New Year, romantic cards, images with text, posters and social graphics as finished design tasks. Separate the exact overlay copy from the visual/background prompt. Prefer a beautiful purpose-built background when generation is available, then render the exact requested message using a polished card layout. Never stop at a plain background or raw stock photo when the user asked for a finished card.",
   "quick_actions": [
     {
+      "label": "Create greeting card",
+      "prompt": "Create a beautiful greeting card with a polished background and place my exact greeting text clearly on the finished image."
+    },
+    {
+      "label": "Create birthday card",
+      "prompt": "Create an elegant birthday card with celebratory imagery and place my exact birthday message clearly on the finished image."
+    },
+    {
+      "label": "Create autumn card",
+      "prompt": "Create a warm autumn greeting card with leaves, cozy light and a polished layout, and place my exact text clearly on the finished image."
+    },
+    {
       "label": "Create romantic card",
-      "prompt": "Create a romantic card from free/public image sources. Find suitable warm imagery, compose a polished final design and add the text I provide."
+      "prompt": "Create a romantic card with warm elegant imagery and place my exact message clearly on the finished image."
+    },
+    {
+      "label": "Create Christmas card",
+      "prompt": "Create a festive Christmas or New Year card and place my exact greeting text clearly on the finished image."
     },
     {
       "label": "Create social graphic",
-      "prompt": "Create a polished social graphic from available free/public images, with a clear focal image, readable text hierarchy and downloadable final design."
+      "prompt": "Create a polished social graphic from available free/public or generated imagery, with a clear focal image, readable text hierarchy and downloadable final design."
     }
   ]
 }

@@ -51,8 +51,11 @@ try {
  if($action==='image_status'){
    $in=aih_json_input();$provider=trim((string)($in['provider_id']??''));$requestId=trim((string)($in['request_id']??''));if($provider!=='aihorde')aih_json(['ok'=>false,'error'=>'Unsupported asynchronous image provider'],422);$res=aih_aihorde_status($requestId,aih_settings());$code=!empty($res['ok'])?200:((int)($res['code']??0)===422?422:503);aih_json($res,$code);
  }
+ if($action==='image_cancel'){
+   $in=aih_json_input();$provider=trim((string)($in['provider_id']??''));$requestId=trim((string)($in['request_id']??''));if($provider!=='aihorde')aih_json(['ok'=>false,'error'=>'Unsupported asynchronous image provider'],422);aih_json(aih_aihorde_cancel($requestId));
+ }
  if($action==='image'){
-   // Legacy synchronous endpoint retained for cached older browsers. v0.6.5 uses image_start + image_status, free web-image search and the browser-side source composer.
+   // Legacy synchronous endpoint retained for cached older browsers. v0.6.7 uses image_start + image_status, smart background generation, free web-image fallback and the Beautiful Greeting Card Studio.
    $in=aih_json_input();$prompt=trim((string)($in['prompt']??''));if($prompt==='')aih_json(['ok'=>false,'error'=>'Prompt is empty'],422);$s=aih_settings();$provider=trim((string)($in['provider']??($s['images']['provider']??'auto')))?:'auto';
    $res=aih_image_generate($prompt,$provider,$s);aih_json($res,!empty($res['ok'])?200:503);
  }
@@ -104,6 +107,8 @@ try {
    if(array_key_exists('aihorde_model',$in))$s['images']['aihorde_model']=trim((string)$in['aihorde_model']);
    if(array_key_exists('aihorde_timeout',$in))$s['images']['aihorde_timeout']=max(45,min(300,(int)$in['aihorde_timeout']));
    if(array_key_exists('aihorde_steps',$in))$s['images']['aihorde_steps']=max(4,min(30,(int)$in['aihorde_steps']));
+   if(array_key_exists('image_speed_mode',$in)&&in_array((string)$in['image_speed_mode'],['fast','balanced','quality'],true))$s['images']['speed_mode']=(string)$in['image_speed_mode'];
+   if(array_key_exists('aihorde_queue_limit',$in))$s['images']['aihorde_queue_limit']=max(15,min(900,(int)$in['aihorde_queue_limit']));
    if(array_key_exists('aihorde_api_key',$in)&&trim((string)$in['aihorde_api_key'])!=='')$s['images']['aihorde_api_key']=trim((string)$in['aihorde_api_key']);
    foreach(['unsplash_access_key','pexels_api_key','pixabay_api_key'] as$k)if(array_key_exists($k,$in)&&trim((string)$in[$k])!=='')$s['images'][$k]=trim((string)$in[$k]);
    if(array_key_exists('system_prompt',$in))$s['system_prompt']=trim((string)$in['system_prompt']);

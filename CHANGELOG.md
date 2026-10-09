@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.6.8
+
+- Stronger high-contrast light/dark UI with Inter/Manrope typography and fixed CSP permissions for Google-hosted card fonts.
+- Added Fast / Balanced / Quality image routing. Fast is default and skips long anonymous AI Horde queues instead of waiting 20+ minutes.
+- AI Horde Auto now applies a queue ceiling, cancels over-limit jobs and continues to faster sources; direct AI Horde use also obeys the Fast/Balanced queue ceiling, while Quality mode can wait without a ceiling.
+- Greeting cards use reusable photography first in Fast/Balanced mode and AI generation first only in Quality mode.
+- Added 15-minute free-image search caching and fewer redundant external requests for faster repeated prompts.
+- Optional Unsplash/Pexels/Pixabay results are searched first and card requests prefer portrait photography when the API supports it.
+- Improved aesthetic card search/ranking for warm light, bokeh, coffee, candles, flowers, golden leaves and portrait-friendly composition.
+- Finished card PNGs no longer burn tiny source credits into the artwork; source/licence attribution remains visible in the UI.
+- Card templates default to Premium Editorial styling.
+- Static/PWA cache bumped to v0.6.8.
+
+
+## 0.6.7
+
+- Rebuilt the greeting-card renderer for a substantially more polished, ChatGPT-style result: full-bleed colour grading, soft vignette, local text glow instead of a washed-out whole-image overlay, refined decorations and cleaner framing.
+- Added Elegant Script, Luxury Glow, Modern Clean and Minimal visual styles plus Auto/Top/Centre/Bottom text placement controls.
+- Added optional web-font loading for Great Vibes, Playfair Display and Montserrat, with system-font fallbacks when the font service is unavailable.
+- Greeting-card requests now prefer image generation (local/configured providers, then AI Horde) before reusable web photography, so the background is composed specifically for a card; free web images remain the fallback.
+- AI background prompts now strip greeting copy and explicitly request premium card composition, warm light, bokeh, clean text space and no generated lettering.
+- Improved free-source ranking for greeting cards by favouring portrait/high-resolution, warm/cozy/golden imagery and penalising utilitarian results such as roads, maps, construction, diagrams and archive material.
+- Removed the checkerboard-looking composer preview background and upgraded the preview panel, shadow and responsive controls.
+- Latvian composer UI now labels the main creation actions in Latvian.
+- Static/PWA cache bumped to v0.6.7.
+
+## 0.6.6
+
+- Added Smart Greeting Card routing so card/image-with-text requests always continue through a composition step instead of stopping at a plain generated background.
+- Fixed Latvian card intent recognition (`kartiņa/kartiņu`, birthday/holiday forms) and the common `ridens` typo; Auto mode now treats these as image tasks even when another router classifies them as chat.
+- Preserved exact overlay copy/capitalisation from prompts such as `ar tekstu - Jauku dienu!`.
+- Added Greeting, Autumn, Birthday and Christmas/New Year card templates with auto-fit script typography, readable contrast, decorative accents and safe borders.
+- Added post-processing for generated Local/AI Horde/cloud images: the requested greeting text is rendered onto the final image and the composed PNG is saved to generated media.
+- Added automatic AI Horde background fallback if a free-source card cannot be composed because the remote source blocks image download.
+- Improved card-specific source queries and added default Latvian/English greeting copy for common card types.
+- Expanded the bundled Greeting Card & Image Composer Studio quick actions.
+- Bumped static/PWA cache to v0.6.6.
+
 ## 0.6.5
 
 - Fixed image-search prompt cleanup for mobile typos and Latvian phrasing; `Latvijas rudens` now resolves to concise reusable-source queries such as `Latvia autumn`.

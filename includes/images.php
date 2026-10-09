@@ -154,6 +154,7 @@ function aih_web_image_normalize_prompt(string $prompt): string {
     $q=preg_replace('/\benice\b/i','nice',$q)??$q;
     $q=preg_replace('/\bcaffe\b/i','cafe',$q)??$q;
     $q=preg_replace('/\bautum\b/i','autumn',$q)??$q;
+    $q=preg_replace('/\bridens\b/i','rudens',$q)??$q;
     return trim(preg_replace('/\s+/u',' ',$q)??$q);
 }
 
@@ -161,26 +162,41 @@ function aih_web_image_composer_meta(string $prompt): array {
     $plain=aih_web_image_normalize_prompt($prompt);
     $ascii=aih_web_image_lower(aih_web_image_ascii($plain));
     $text='';
-    // English and Latvian overlay-copy markers. Quoted text is preferred so the
-    // search query stays about the picture rather than the greeting itself.
-    if(preg_match('/(?:\btext\b|\bmessage\b|\bsaying\b|\bcaption\b|\btekst(?:s|u)?\b|\buzrakst(?:s|u)?\b|\bzina\b|\bvelejums?\b)\s*(?:[:=\-]\s*)?[\x{201c}\x{201d}"]?(.+?)[\x{201c}\x{201d}"]?\s*$/ui',$ascii,$m))$text=trim((string)$m[1]);
-    if($text===''&&preg_match('/[\x{201c}"]([^\x{201c}\x{201d}"]{2,120})[\x{201d}"]\s*$/u',$plain,$m))$text=trim((string)$m[1]);
-    // Recover the original quoted greeting when ASCII transliteration was used above.
-    if($text!==''&&preg_match('/[\x{201c}"]([^\x{201c}\x{201d}"]{2,120})[\x{201d}"]\s*$/u',$plain,$m))$text=trim((string)$m[1]);
+
+    // Prefer explicitly quoted copy, then accept English/Latvian text markers.
+    // Latvian prompts commonly use "ar tekstu - ..." and mobile users often omit quotes.
+    if(preg_match('/[\x{201c}\x{201e}"\']([^\x{201c}\x{201d}\x{201e}"\']{2,120})[\x{201d}"\']\s*$/u',$plain,$m))$text=trim((string)$m[1]);
+    if($text===''&&preg_match('/(?:\bar\s+)?(?:\btext\b|\bmessage\b|\bsaying\b|\bcaption\b|\btekst(?:s|u)?\b|\buzrakst(?:s|u)?\b|\bzi(?:n|ņ)a\b|\bv(?:e|ē)lejums?\b)\s*(?:[:=\-\x{2013}\x{2014}]\s*)?[\x{201c}\x{201e}"\']?(.+?)[\x{201d}"\']?\s*$/ui',$plain,$m))$text=trim((string)$m[1]);
+
+    $hasCard=(bool)preg_match('/\b(?:card|greeting\s+card|birthday\s+card|christmas\s+card|new\s+year\s+card|thank\s+you\s+card|good\s+morning\s+card|kartin\w*|apsveikum\w*|dzimsanas\s+dien\w*|varda\s+dien\w*|ziemassvet\w*|jaun\w*\s+gad\w*)\b/i',$ascii);
+    // A short suffix after a dash is normally the greeting itself for card requests.
+    if($text===''&&$hasCard&&preg_match('/(?:\-|\x{2013}|\x{2014})\s*([^\-\x{2013}\x{2014}]{2,120})\s*$/u',$plain,$m)){$text=trim((string)$m[1]);$text=trim($text," \t\n\r\0\x0B\"'");$text=preg_replace('/^[\x{201c}\x{201d}\x{201e}]+|[\x{201c}\x{201d}\x{201e}]+$/u','',$text)??$text;}
     if($text!==''&&aih_web_image_strlen($text)>120)$text=aih_web_image_substr($text,0,120);
 
-    $hasCreate=(bool)preg_match('/\b(?:create|make|build|compose|design|generate|produce|izveido|izveidot|uztaisi|uztaisit|izgatavo|izgatavot|radi|radit)\b/i',$ascii);
-    $hasVisual=(bool)preg_match('/\b(?:image|images|picture|pictures|photo|photos|card|poster|collage|moodboard|graphic|banner|flyer|attels|attelu|bilde|bildi|foto|kartite|kartiti|plakats|plakatu)\b/i',$ascii);
-    $explicit=(bool)preg_match('/\b(?:romantic\s+card|greeting\s+card|card\s+for|poster|collage|moodboard|social\s+(?:post|graphic)|instagram\s+post|facebook\s+post|hero\s+banner|banner|flyer|build\s+(?:a\s+)?design|create\s+(?:a\s+)?design|compose\s+(?:an?\s+)?image|from\s+(?:the\s+)?available\s+sources|romantisk\w*\s+kartit\w*|izveido\w*\s+kartit\w*)\b/i',$ascii);
+    $hasCreate=(bool)preg_match('/\b(?:create|make|build|compose|design|generate|produce|izveido|izveidot|uztaisi|uztaisit|izgatavo|izgatavot|radi|radit|veido|izveidoj)\w*\b/i',$ascii);
+    $hasVisual=(bool)preg_match('/\b(?:image|images|picture|pictures|photo|photos|card|poster|collage|moodboard|graphic|banner|flyer|attels|attelu|bilde|bildi|foto|kartin\w*|apsveikum\w*|plakat\w*)\b/i',$ascii);
+    $explicit=$hasCard||(bool)preg_match('/\b(?:poster|collage|moodboard|social\s+(?:post|graphic)|instagram\s+post|facebook\s+post|hero\s+banner|banner|flyer|build\s+(?:a\s+)?design|create\s+(?:a\s+)?design|compose\s+(?:an?\s+)?image|from\s+(?:the\s+)?available\s+sources)\b/i',$ascii);
     $auto=$explicit||($hasCreate&&$hasVisual&&$text!=='');
 
     $template='social';
-    if(preg_match('/\b(?:romantic|love|partner|valentine|anniversary|romantisk\w*|milestib\w*|partner\w*|valentin\w*|jubilej\w*)\b/i',$ascii))$template='romantic';
+    $cardType='graphic';
+    if(preg_match('/\b(?:birthday|happy\s+birthday|dzimsanas\s+dien\w*)\b/i',$ascii)){$template='birthday';$cardType='birthday';}
+    elseif(preg_match('/\b(?:christmas|xmas|new\s+year|ziemassvet\w*|jaun\w*\s+gad\w*)\b/i',$ascii)){$template='christmas';$cardType='christmas';}
+    elseif(preg_match('/\b(?:romantic|love|partner|valentine|anniversary|romantisk\w*|milestib\w*|partner\w*|valentin\w*|jubilej\w*)\b/i',$ascii)){$template='romantic';$cardType='romantic';}
+    elseif(preg_match('/\b(?:autumn|fall|rudens)\b/i',$ascii)&&$hasCard){$template='autumn';$cardType='autumn';}
+    elseif($hasCard){$template='greeting';$cardType='greeting';}
     elseif(preg_match('/\b(?:moodboard|collage|kolaz\w*)\b/i',$ascii))$template='moodboard';
     elseif(preg_match('/\b(?:hero|banner|blog\s+cover|galven\w*\s+att\w*)\b/i',$ascii))$template='hero';
     elseif(preg_match('/\b(?:flyer|poster|plakat\w*)\b/i',$ascii))$template='poster';
-    if($text===''&&$template==='romantic')$text='Have a beautiful day!';
-    return ['auto'=>$auto,'template'=>$template,'text'=>$text];
+
+    $latvian=(bool)preg_match('/\b(?:latvij\w*|skaist\w*|jauk\w*|rudens|kartin\w*|apsveikum\w*|dzimsanas|varda|ziemassvet\w*|dienu|tekstu|uzrakstu)\b/i',$ascii);
+    if($text===''){
+        if($cardType==='birthday')$text=$latvian?'Daudz laimes!':'Happy Birthday!';
+        elseif($cardType==='christmas')$text=$latvian?'Priecīgus svētkus!':'Season\'s Greetings!';
+        elseif($cardType==='romantic')$text=$latvian?'Ar mīlestību!':'With love!';
+        elseif(in_array($cardType,['autumn','greeting'],true))$text=$latvian?'Jauku dienu!':'Have a nice day!';
+    }
+    return ['auto'=>$auto,'template'=>$template,'text'=>$text,'card_type'=>$cardType,'latvian'=>$latvian];
 }
 
 function aih_web_image_query(string $prompt): string {
@@ -194,7 +210,7 @@ function aih_web_image_query(string $prompt): string {
     $tokens=preg_split('/[^A-Za-z0-9]+/',$ascii)?:[];
     $stop=array_fill_keys([
         'please','pls','need','to','want','generate','create','created','creating','make','build','compose','show','find','give','me','image','images','picture','pictures','photo','photos','photograph','photographs','high','quality','better','nicer','nice','colours','colors','available','sources','source','free','card','greeting','social','post','instagram','facebook','poster','flyer','moodboard','collage','design','for','my','partner','partnerim','partnerei','bildem','atteliem','and','or','with','the','a','an','from','have','day','text','message','saying','caption','creat','enice',
-        'ludzu','vajag','velos','gribu','izveido','izveidot','uztaisi','uztaisit','izgatavo','izgatavot','radi','radit','attels','attelu','attela','bilde','bildi','bildes','foto','fotografija','fotografiju','jauks','jauku','jauka','skaists','skaistu','skaista','skaisti','kvalitate','kvalitativs','kvalitativu','krasains','krasaina','krasainu','pieejams','pieejamiem','avotiem','avoti','ar','un','no','par','man','manu','mana','teksts','tekstu','uzraksts','uzrakstu','zina','velejums','kartite','kartiti','plakats','plakatu'
+        'ludzu','vajag','velos','gribu','izveido','izveidot','uztaisi','uztaisit','izgatavo','izgatavot','radi','radit','attels','attelu','attela','bilde','bildi','bildes','foto','fotografija','fotografiju','jauks','jauku','jauka','skaists','skaistu','skaista','skaisti','kvalitate','kvalitativs','kvalitativu','krasains','krasaina','krasainu','pieejams','pieejamiem','avotiem','avoti','ar','un','no','par','man','manu','mana','teksts','tekstu','uzraksts','uzrakstu','zina','velejums','kartite','kartiti','kartina','kartinu','kartinas','apsveikums','apsveikumu','dzimsanas','dienas','varda','ziemassvetku','plakats','plakatu'
     ],true);
     $map=[
         'latvijas'=>'Latvia','latvija'=>'Latvia','latvian'=>'Latvia','latvia'=>'Latvia',
@@ -210,7 +226,7 @@ function aih_web_image_query(string $prompt): string {
     foreach($tokens as$token){$token=trim((string)$token);if($token==='')continue;$key=aih_web_image_lower($token);if(isset($stop[$key]))continue;$value=$map[$key]??$token;$dedupe=aih_web_image_lower((string)$value);if(isset($seen[$dedupe]))continue;$seen[$dedupe]=true;$out[]=(string)$value;}
     $q=trim(preg_replace('/\s+/u',' ',implode(' ',$out))??implode(' ',$out));
     if(($meta['template']??'')==='romantic'&&!preg_match('/\b(?:flower|flowers|rose|roses|coffee|cafe|sunset|couple|love|heart|candle|candles|autumn|winter|spring|summer|riga|latvia|romantic)\b/i',$q))$q=trim($q.' romantic flowers warm light');
-    if(aih_web_image_strlen($q)<3)$q=($meta['template']??'')==='romantic'?'romantic flowers warm light':'nature landscape';
+    if(aih_web_image_strlen($q)<3){$type=(string)($meta['card_type']??'');if($type==='birthday')$q='birthday celebration flowers cake balloons';elseif($type==='christmas')$q='Christmas festive lights winter candles';elseif($type==='autumn')$q='autumn leaves cozy warm landscape';elseif($type==='greeting')$q='flowers sunlight warm greeting';elseif(($meta['template']??'')==='romantic')$q='romantic flowers warm light';else $q='nature landscape';}
     return aih_web_image_substr($q,0,180);
 }
 
@@ -223,6 +239,11 @@ function aih_web_image_query_variants(string $prompt): array {
     }
     if(str_contains($lower,'riga')&&str_contains($lower,'autumn')&&!in_array('Riga autumn',$variants,true))$variants[]='Riga autumn';
     $meta=aih_web_image_composer_meta($prompt);
+    $cardType=(string)($meta['card_type']??'');
+    if($cardType==='birthday'){foreach(['birthday celebration flowers','birthday cake balloons elegant'] as$v)if(!in_array($v,$variants,true))$variants[]=$v;}
+    elseif($cardType==='christmas'){foreach(['Christmas warm lights winter','Christmas candles festive'] as$v)if(!in_array($v,$variants,true))$variants[]=$v;}
+    elseif($cardType==='autumn'){foreach(['cozy autumn coffee maple leaves golden hour bokeh','autumn lake sunset warm leaves cozy cup','autumn still life candle coffee leaves','golden autumn terrace coffee warm light'] as$v)if(!in_array($v,$variants,true))$variants[]=$v;}
+    elseif($cardType==='greeting'){foreach(['beautiful greeting flowers golden light','cozy flowers coffee light','warm greeting flowers sunlight'] as$v)if(!in_array($v,$variants,true))$variants[]=$v;}
     if(($meta['template']??'')==='romantic'){
         foreach(['romantic warm light flowers','romantic coffee flowers candle'] as$v)if(!in_array($v,$variants,true))$variants[]=$v;
     }
@@ -306,9 +327,9 @@ function aih_wikimedia_image_search(string $query,int $limit=12): array {
     return ['ok'=>true,'code'=>$r['code'],'rows'=>$rows];
 }
 
-function aih_unsplash_image_search(string $query,string $key,int $limit=12): array {
+function aih_unsplash_image_search(string $query,string $key,int $limit=12,string $orientation=''): array {
     $key=trim($key);if($key==='')return ['ok'=>true,'code'=>0,'rows'=>[]];
-    $url='https://api.unsplash.com/search/photos?'.http_build_query(['query'=>$query,'per_page'=>max(4,min(30,$limit)),'content_filter'=>'high','orientation'=>'landscape']);
+    $params=['query'=>$query,'per_page'=>max(4,min(30,$limit)),'content_filter'=>'high','order_by'=>'relevant'];if(in_array($orientation,['portrait','landscape','squarish'],true))$params['orientation']=$orientation;$url='https://api.unsplash.com/search/photos?'.http_build_query($params);
     $r=aih_http('GET',$url,null,['Accept: application/json','Authorization: Client-ID '.$key],15);
     if($r['code']<200||$r['code']>=300)return ['ok'=>false,'code'=>$r['code'],'rows'=>[],'error'=>'Unsplash HTTP '.$r['code']];
     $j=json_decode((string)$r['body'],true);$rows=[];
@@ -316,9 +337,9 @@ function aih_unsplash_image_search(string $query,string $key,int $limit=12): arr
     return ['ok'=>true,'code'=>$r['code'],'rows'=>$rows];
 }
 
-function aih_pexels_image_search(string $query,string $key,int $limit=12): array {
+function aih_pexels_image_search(string $query,string $key,int $limit=12,string $orientation=''): array {
     $key=trim($key);if($key==='')return ['ok'=>true,'code'=>0,'rows'=>[]];
-    $url='https://api.pexels.com/v1/search?'.http_build_query(['query'=>$query,'per_page'=>max(4,min(30,$limit)),'orientation'=>'landscape']);
+    $params=['query'=>$query,'per_page'=>max(4,min(30,$limit))];if(in_array($orientation,['portrait','landscape','square'],true))$params['orientation']=$orientation;$url='https://api.pexels.com/v1/search?'.http_build_query($params);
     $r=aih_http('GET',$url,null,['Accept: application/json','Authorization: '.$key],15);
     if($r['code']<200||$r['code']>=300)return ['ok'=>false,'code'=>$r['code'],'rows'=>[],'error'=>'Pexels HTTP '.$r['code']];
     $j=json_decode((string)$r['body'],true);$rows=[];
@@ -366,16 +387,17 @@ function aih_web_image_resource_links(string $query): array {
 }
 
 function aih_web_image_search(string $prompt,int $limit=8,?array $settings=null): array {
-    $settings=$settings??aih_settings();$queries=aih_web_image_query_variants($prompt);$query=$queries[0]??aih_web_image_query($prompt);$want=max(6,min(18,$limit));$all=[];$errors=[];$used=[];$status=[];$images=$settings['images']??[];
-    $qLower=aih_web_image_lower(aih_web_image_ascii(implode(' ',$queries)));
+    $settings=$settings??aih_settings();$images=$settings['images']??[];$queries=aih_web_image_query_variants($prompt);$query=$queries[0]??aih_web_image_query($prompt);$want=max(6,min(18,$limit));$all=[];$errors=[];$used=[];$status=[];
+    $cacheTtl=max(60,min(3600,(int)($images['web_image_cache_ttl']??900)));$cacheKey=sha1($query.'|'.implode('|',$queries).'|'.$want.'|'.(!empty($images['unsplash_access_key'])?'u':'').(!empty($images['pexels_api_key'])?'p':'').(!empty($images['pixabay_api_key'])?'x':''));$cacheFile=AIH_CACHE.'/web-image-'.$cacheKey.'.json';$cached=aih_read_json($cacheFile,[]);if(is_array($cached)&&!empty($cached['ok'])&&(int)($cached['_cached_at']??0)>time()-$cacheTtl){unset($cached['_cached_at']);$cached['cached']=true;return $cached;}
+    $qLower=aih_web_image_lower(aih_web_image_ascii(implode(' ',$queries)));$composerMeta=aih_web_image_composer_meta($prompt);$orientation=!empty($composerMeta['auto'])?'portrait':'';
     $sources=[
-        ['openverse',4,fn($q)=>aih_openverse_image_search($q,$want*2),true],
-        ['wikimedia',4,fn($q)=>aih_wikimedia_image_search($q,$want*2),true],
-        ['nasa',2,fn($q)=>aih_nasa_image_search($q,min(8,$want)),(bool)preg_match('/\b(?:space|nasa|moon|earth|planet|rocket|astronaut|galaxy|satellite|mars|jupiter)\b/i',$qLower)],
-        ['met',2,fn($q)=>aih_met_image_search($q,min(8,$want)),(bool)preg_match('/\b(?:art|painting|museum|portrait|sculpture|historical|history|vintage|ancient|renaissance)\b/i',$qLower)],
-        ['unsplash',2,fn($q)=>aih_unsplash_image_search($q,(string)($images['unsplash_access_key']??''),$want),trim((string)($images['unsplash_access_key']??''))!==''],
-        ['pexels',2,fn($q)=>aih_pexels_image_search($q,(string)($images['pexels_api_key']??''),$want),trim((string)($images['pexels_api_key']??''))!==''],
+        ['unsplash',2,fn($q)=>aih_unsplash_image_search($q,(string)($images['unsplash_access_key']??''),$want,$orientation),trim((string)($images['unsplash_access_key']??''))!==''],
+        ['pexels',2,fn($q)=>aih_pexels_image_search($q,(string)($images['pexels_api_key']??''),$want,$orientation),trim((string)($images['pexels_api_key']??''))!==''],
         ['pixabay',2,fn($q)=>aih_pixabay_image_search($q,(string)($images['pixabay_api_key']??''),$want),trim((string)($images['pixabay_api_key']??''))!==''],
+        ['openverse',2,fn($q)=>aih_openverse_image_search($q,$want*2),true],
+        ['wikimedia',2,fn($q)=>aih_wikimedia_image_search($q,$want*2),true],
+        ['nasa',1,fn($q)=>aih_nasa_image_search($q,min(8,$want)),(bool)preg_match('/\b(?:space|nasa|moon|earth|planet|rocket|astronaut|galaxy|satellite|mars|jupiter)\b/i',$qLower)],
+        ['met',1,fn($q)=>aih_met_image_search($q,min(8,$want)),(bool)preg_match('/\b(?:art|painting|museum|portrait|sculpture|historical|history|vintage|ancient|renaissance)\b/i',$qLower)],
     ];
     foreach($sources as[$name,$variantLimit,$fn,$enabled]){
         if(!$enabled){$status[$name]='skipped';continue;}
@@ -393,11 +415,11 @@ function aih_web_image_search(string $prompt,int $limit=8,?array $settings=null)
     // as a manual prototype source, but keyword quality/hotlink reliability is too
     // inconsistent for an automatic card composer.
     $scoreQuery=$query;$seen=[];$rows=[];
-    foreach($all as$row){$key=strtolower((string)($row['image_url']??$row['source_url']??''));if($key===''||isset($seen[$key]))continue;$seen[$key]=1;$row['_score']=aih_web_image_score($row,$scoreQuery);$source=(string)($row['source_key']??'');$row['_score']+=match($source){'unsplash'=>1.8,'pexels'=>1.7,'pixabay'=>1.4,'wikimedia'=>1.2,'openverse'=>1.0,'nasa'=>0.7,'met'=>0.6,default=>0.0};$rows[]=$row;}
+    foreach($all as$row){$key=strtolower((string)($row['image_url']??$row['source_url']??''));if($key===''||isset($seen[$key]))continue;$seen[$key]=1;$row['_score']=aih_web_image_score($row,$scoreQuery);$source=(string)($row['source_key']??'');$row['_score']+=match($source){'unsplash'=>1.8,'pexels'=>1.7,'pixabay'=>1.4,'wikimedia'=>1.2,'openverse'=>1.0,'nasa'=>0.7,'met'=>0.6,default=>0.0};if(!empty($composerMeta['auto'])){$hay=aih_web_image_lower((string)(($row['title']??'').' '.($row['creator']??'')));foreach(['golden','warm','sunset','autumn','leaves','maple','flower','flowers','coffee','cup','candle','cozy','bokeh','lake','light','glow','table','terrace','still life'] as$good)if(aih_web_image_pos($hay,$good)!==false)$row['_score']+=0.62;foreach(['road','construction','document','diagram','map','sculpture','waiting','archive','restoration','survey','mud','ruin','industrial','traffic','parking'] as$bad)if(aih_web_image_pos($hay,$bad)!==false)$row['_score']-=1.7;$w=max(0,(int)($row['width']??0));$h=max(0,(int)($row['height']??0));if($w>0&&$h>0){$ratio=$w/$h;if($ratio>=.62&&$ratio<=.95)$row['_score']+=1.25;elseif($ratio>1.65)$row['_score']-=.45;}}$rows[]=$row;}
     usort($rows,fn($a,$b)=>(float)($b['_score']??0)<=>(float)($a['_score']??0));$rows=array_slice($rows,0,$want);foreach($rows as&$row)unset($row['_score']);unset($row);
     if(!$rows)return ['ok'=>false,'code'=>503,'error'=>'No matching reusable web images were returned'.($errors?' ('.implode('; ',array_slice(array_unique($errors),0,4)).')':''),'query'=>$query,'searched_queries'=>$queries,'source_status'=>$status,'resource_links'=>aih_web_image_resource_links($query),'headers'=>[]];
     $labels=array_values(array_unique(array_map(fn($r)=>(string)($r['source']??''),$rows)));$provider='Free web images · '.implode(' + ',array_slice($labels,0,4));if(count($labels)>4)$provider.=' + more';
-    return ['ok'=>true,'pending'=>false,'result_type'=>'web_search','provider'=>$provider,'provider_id'=>'free_web','query'=>$query,'searched_queries'=>$queries,'results'=>$rows,'sources_used'=>array_values(array_unique($used)),'source_status'=>$status,'resource_links'=>aih_web_image_resource_links($query),'composer'=>aih_web_image_composer_meta($prompt),'notice'=>'Reusable-source results are ranked for relevance and image size. Select images or ask to create an image with text to build a finished design automatically. LoremFlickr stays available only as a manual source because placeholder hotlinking can be unreliable. Check each source/licence before reuse.','headers'=>[]];
+    $result=['ok'=>true,'pending'=>false,'result_type'=>'web_search','provider'=>$provider,'provider_id'=>'free_web','query'=>$query,'searched_queries'=>$queries,'results'=>$rows,'sources_used'=>array_values(array_unique($used)),'source_status'=>$status,'resource_links'=>aih_web_image_resource_links($query),'composer'=>$composerMeta,'notice'=>'Reusable-source results are ranked for relevance and image size. Select images or ask to create an image with text to build a finished design automatically. Check each source/licence before reuse.','headers'=>[]];aih_write_json($cacheFile,$result+['_cached_at'=>time()]);return $result;
 }
 
 
@@ -462,24 +484,37 @@ function aih_image_prompt_prefers_generation(string $prompt): bool {
     return aih_aihorde_prompt_is_stylized($prompt) || (bool)preg_match('/\b(?:logo|brand mark|mascot|icon set|poster design|product mockup|surreal|fantasy|sci[- ]?fi|character design|3d render|cgi render)\b/ui',$prompt);
 }
 
-function aih_image_prompt_order(array $order,string $prompt,string $requested): array {
+function aih_image_speed_mode(array $settings): string { $mode=(string)(($settings['images']??[])['speed_mode']??'fast');return in_array($mode,['fast','balanced','quality'],true)?$mode:'fast'; }
+function aih_aihorde_queue_limit(array $settings): int { $mode=aih_image_speed_mode($settings);if($mode==='quality')return 0;$configured=max(15,min(900,(int)(($settings['images']??[])['aihorde_queue_limit']??45)));return $mode==='fast'?min(60,$configured):max(60,$configured); }
+
+function aih_image_prompt_order(array $order,string $prompt,string $requested,array $settings=[]): array {
     if($requested!=='auto')return $order;
     $composer=aih_web_image_composer_meta($prompt);
-    if(!empty($composer['auto'])&&in_array('free_web',$order,true)){
-        // A card/poster/social/moodboard request is a composition task, not merely a
-        // stock-image lookup. Start with free-source discovery so the browser can
-        // assemble a finished design instead of returning unrelated AI output.
-        $order=array_values(array_filter($order,fn($id)=>$id!=='free_web'));
-        array_unshift($order,'free_web');
+    if(!empty($composer['auto'])&&in_array('free_web',$order,true)&&in_array('aihorde',$order,true)){
+        $mode=aih_image_speed_mode($settings);
+        $order=array_values(array_filter($order,fn($id)=>!in_array($id,['aihorde','free_web'],true)));
+        if($mode==='quality'){$order[]='aihorde';$order[]='free_web';}else{$order[]='free_web';$order[]='aihorde';}
         return $order;
     }
     if(!aih_image_prompt_prefers_generation($prompt))return $order;
     if(!in_array('aihorde',$order,true)||!in_array('free_web',$order,true))return $order;
-    // Put free_web immediately after AI Horde only for an explicitly generative prompt.
     $order=array_values(array_filter($order,fn($id)=>$id!=='free_web'));
     $pos=array_search('aihorde',$order,true);
     array_splice($order,$pos===false?count($order):(int)$pos+1,0,['free_web']);
     return $order;
+}
+
+function aih_card_background_prompt(string $prompt): string {
+    $meta=aih_web_image_composer_meta($prompt);if(empty($meta['auto']))return $prompt;
+    $q=aih_web_image_query($prompt);$type=(string)($meta['card_type']??'greeting');
+    $style=match($type){
+        'autumn'=>'beautiful premium autumn greeting card background, golden hour, rich orange and amber leaves, cozy warm light, elegant seasonal still life, soft bokeh, tasteful composition, generous clean space for greeting text',
+        'birthday'=>'beautiful premium birthday greeting card background, elegant flowers, warm celebratory lights, tasteful confetti, soft bokeh, joyful luxury composition, generous clean space for greeting text',
+        'christmas'=>'beautiful premium Christmas greeting card background, warm festive lights, candles, evergreen details, gold accents, cozy winter atmosphere, soft bokeh, generous clean space for greeting text',
+        'romantic'=>'beautiful premium romantic greeting card background, warm sunset light, flowers, candles, subtle hearts, elegant soft bokeh, tasteful luxury composition, generous clean space for greeting text',
+        default=>'beautiful premium greeting card background, warm natural light, elegant seasonal details, soft bokeh, tasteful editorial composition, generous clean space for greeting text'
+    };
+    return trim(($q!==''?$q.', ':'').$style.', no words, no letters, no typography, no watermark');
 }
 
 function aih_aihorde_quality_prompt(string $prompt): string {
@@ -602,7 +637,7 @@ function aih_image_call(string $id,string $prompt,array $s): array {
         $key=aih_connection_value($s,'aihorde',['aihorde_api_key','api_key'],['AIH_AIHORDE_API_KEY','AIHORDE_API_KEY']);
         if($key==='')$key='0000000000';
         $model=trim((string)($images['aihorde_model']??''));if($model==='')$model=aih_aihorde_auto_model($s,$prompt);
-        $timeout=max(45,min(300,(int)($images['aihorde_timeout']??180)));$qualityPrompt=aih_aihorde_quality_prompt($prompt);
+        $timeout=max(45,min(300,(int)($images['aihorde_timeout']??180)));$qualityPrompt=aih_aihorde_quality_prompt(aih_card_background_prompt($prompt));
         $payload=[
             'prompt'=>$qualityPrompt,
             'params'=>['sampler_name'=>'k_euler_a','cfg_scale'=>7,'steps'=>20,'width'=>512,'height'=>512,'n'=>1,'karras'=>true],
@@ -655,12 +690,13 @@ function aih_aihorde_key(array $s): string {
     return $key!==''?$key:'0000000000';
 }
 
-function aih_aihorde_pick_model_from_rows(array $rows,string $prompt=''): string {
+function aih_aihorde_pick_model_from_rows(array $rows,string $prompt='',int $maxEta=0): string {
     $best='';$bestScore=INF;$stylized=aih_aihorde_prompt_is_stylized($prompt);
     foreach($rows as$row){
         if(!is_array($row))continue;$name=trim((string)($row['name']??''));$count=max(0,(int)($row['count']??0));
         if($name===''||$count<1)continue;
         $eta=max(0.0,(float)($row['eta']??999999));$queued=max(0.0,(float)($row['queued']??0));$performance=max(0.0,(float)($row['performance']??0));
+        if($maxEta>0&&$eta>$maxEta*2.2)continue;
         $score=$eta+($queued/max(1,$count))*0.35-min(90.0,$count*3.0)-min(60.0,$performance/20.0);$n=aih_web_image_lower($name);
         $photo=(bool)preg_match('/(?:sdxl|stable diffusion xl|realvis|juggernaut|dreamshaper|deliberate|albedo|realistic|photo|photoreal|flux)/ui',$n);
         $anime=(bool)preg_match('/(?:anime|manga|pony|waifu|hentai|furry|toony|cartoon)/ui',$n);
@@ -677,13 +713,13 @@ function aih_aihorde_auto_model(array $s,string $prompt=''): string {
     if(is_array($cached)&&!empty($cached['model'])&&(int)($cached['expires']??0)>time())return trim((string)$cached['model']);
     $r=aih_http('GET','https://aihorde.net/api/v2/status/models?type=image&min_count=1',null,['Accept: application/json','Client-Agent: '.aih_aihorde_client()],6);
     if($r['code']<200||$r['code']>=300)return '';
-    $j=json_decode((string)$r['body'],true);$model=is_array($j)?aih_aihorde_pick_model_from_rows($j,$prompt):'';
+    $j=json_decode((string)$r['body'],true);$model=is_array($j)?aih_aihorde_pick_model_from_rows($j,$prompt,aih_aihorde_queue_limit($s)):'';
     if($model!=='')aih_write_json($cache,['model'=>$model,'expires'=>time()+300]);
     return $model;
 }
 
 function aih_aihorde_submit(string $prompt,array $s): array {
-    $images=$s['images']??[];$model=aih_aihorde_auto_model($s,$prompt);$steps=max(4,min(30,(int)($images['aihorde_steps']??16)));$qualityPrompt=aih_aihorde_quality_prompt($prompt);
+    $images=$s['images']??[];$model=aih_aihorde_auto_model($s,$prompt);$steps=max(4,min(30,(int)($images['aihorde_steps']??16)));$qualityPrompt=aih_aihorde_quality_prompt(aih_card_background_prompt($prompt));
     $payload=[
         'prompt'=>$qualityPrompt,
         'params'=>['sampler_name'=>'k_euler_a','cfg_scale'=>7,'steps'=>$steps,'width'=>512,'height'=>512,'n'=>1,'karras'=>true],
@@ -698,7 +734,13 @@ function aih_aihorde_submit(string $prompt,array $s): array {
         return ['ok'=>false,'code'=>$start['code'],'error'=>trim(substr($err?:$start['error']?:'AI Horde request was not accepted',0,700)),'headers'=>$start['headers']??[]];
     }
     // Return immediately once the job is accepted. Queue ETA/position are fetched by the browser poll.
-    return ['ok'=>true,'pending'=>true,'provider'=>'AI Horde · anonymous community queue','provider_id'=>'aihorde','request_id'=>$requestId,'model'=>$model,'steps'=>$steps,'wait_time'=>0,'queue_position'=>0,'is_possible'=>true];
+    return ['ok'=>true,'pending'=>true,'provider'=>'AI Horde · anonymous community queue','provider_id'=>'aihorde','request_id'=>$requestId,'model'=>$model,'steps'=>$steps,'wait_time'=>0,'queue_position'=>0,'queue_limit'=>aih_aihorde_queue_limit($s),'is_possible'=>true];
+}
+
+function aih_aihorde_cancel(string $requestId): array {
+    if(!preg_match('/^[A-Za-z0-9-]{10,100}$/',$requestId))return ['ok'=>false,'error'=>'Invalid AI Horde request id'];
+    $r=aih_http('DELETE','https://aihorde.net/api/v2/generate/status/'.rawurlencode($requestId),null,['Accept: application/json','Client-Agent: '.aih_aihorde_client()],8);
+    return ['ok'=>$r['code']>=200&&$r['code']<300,'code'=>$r['code'],'request_id'=>$requestId];
 }
 
 function aih_aihorde_status(string $requestId,array $s): array {
@@ -708,7 +750,7 @@ function aih_aihorde_status(string $requestId,array $s): array {
     if($check['code']<200||$check['code']>=300)return ['ok'=>false,'code'=>$check['code'],'error'=>trim(substr((string)($check['body']?:$check['error']?:'AI Horde status failed'),0,700)),'headers'=>$check['headers']??[]];
     $j=json_decode((string)$check['body'],true);if(!is_array($j))return ['ok'=>true,'pending'=>true,'provider'=>'AI Horde · anonymous community queue','provider_id'=>'aihorde','request_id'=>$requestId,'temporary'=>true,'retry_after'=>5];
     if(!empty($j['faulted']))return ['ok'=>false,'code'=>503,'error'=>'AI Horde generation faulted','headers'=>$check['headers']??[]];
-    $progress=['ok'=>true,'pending'=>empty($j['done']),'provider'=>'AI Horde · anonymous community queue','provider_id'=>'aihorde','request_id'=>$requestId,'wait_time'=>max(0,(int)($j['wait_time']??0)),'queue_position'=>max(0,(int)($j['queue_position']??0)),'is_possible'=>array_key_exists('is_possible',$j)?(bool)$j['is_possible']:true];
+    $progress=['ok'=>true,'pending'=>empty($j['done']),'provider'=>'AI Horde · anonymous community queue','provider_id'=>'aihorde','request_id'=>$requestId,'wait_time'=>max(0,(int)($j['wait_time']??0)),'queue_position'=>max(0,(int)($j['queue_position']??0)),'queue_limit'=>aih_aihorde_queue_limit($s),'is_possible'=>array_key_exists('is_possible',$j)?(bool)$j['is_possible']:true];
     if(empty($j['done']))return $progress;
     $status=aih_http('GET','https://aihorde.net/api/v2/generate/status/'.rawurlencode($requestId),null,['Accept: application/json','Client-Agent: '.$client],30);
     if($status['code']===429||$status['code']===0||$status['code']>=500){$progress['pending']=true;$progress['temporary']=true;$progress['retry_after']=5;return $progress;}
@@ -726,12 +768,15 @@ function aih_image_start(string $prompt,string $requested='auto',?array $setting
     $settings=$settings??aih_settings();$catalog=aih_image_catalog();$images=$settings['images']??[];$state=aih_provider_state();$tried=[];
     $order=is_array($images['order']??null)?$images['order']:['sdwebui','comfyui','cloudflare_image','alibaba_qwen_image','huggingface_image','siliconflow_image','pollinations','free_web','aihorde'];
     if($requested!=='auto')$order=[$requested];
-    else $order=aih_image_prompt_order($order,$prompt,$requested);
+    else $order=aih_image_prompt_order($order,$prompt,$requested,$settings);
     foreach($order as$id){
         $id=(string)$id;if(!isset($catalog[$id]))continue;$stateId=aih_image_state_id($id);$cool=(int)($state[$stateId]['cooldown_until']??0);
         if($cool>time()){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'cooldown','until'=>$cool];continue;}
         if(!aih_image_provider_configured($id,$settings)){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'not_configured'];continue;}
         $res=$id==='aihorde'?aih_aihorde_submit($prompt,$settings):aih_image_call($id,$prompt,$settings);
+        if(!empty($res['ok'])&&$id==='aihorde'&&!empty($res['pending'])&&$requested==='auto'){
+            $limit=aih_aihorde_queue_limit($settings);if($limit>0){usleep(300000);$peek=aih_aihorde_status((string)$res['request_id'],$settings);if(!empty($peek['ok'])&&empty($peek['pending'])){$res=$peek;}elseif(!empty($peek['ok'])){$wait=max(0,(int)($peek['wait_time']??0));if($wait>$limit){aih_aihorde_cancel((string)$res['request_id']);$tried[]=['id'=>'aihorde','name'=>$catalog[$id]['name'],'status'=>'queue_skipped','wait_time'=>$wait,'queue_position'=>max(0,(int)($peek['queue_position']??0)),'error'=>'Queue estimate '.$wait.'s exceeded Auto limit '.$limit.'s'];continue;}$res=array_merge($res,$peek);}}
+        }
         if(!empty($res['ok'])){aih_mark_provider_state($stateId,['last_ok'=>time(),'last_error'=>'','cooldown_until'=>0]);$res['provider']=$catalog[$id]['name'];$res['provider_id']=$id;$res['tried']=$tried;if(!array_key_exists('pending',$res))$res['pending']=false;return $res;}
         $code=(int)($res['code']??0);$entry=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'failed','code'=>$code,'error'=>substr((string)($res['error']??''),0,220)];$until=0;
         if($code===429){$until=time()+aih_retry_seconds($res['headers']??[],900);$entry['status']='rate_limited';}
@@ -747,7 +792,7 @@ function aih_image_generate(string $prompt,string $requested='auto',?array $sett
     $settings=$settings??aih_settings();$catalog=aih_image_catalog();$images=$settings['images']??[];$state=aih_provider_state();$tried=[];
     $order=is_array($images['order']??null)?$images['order']:['sdwebui','comfyui','cloudflare_image','alibaba_qwen_image','huggingface_image','siliconflow_image','pollinations','free_web','aihorde'];
     if($requested!=='auto')$order=[$requested];
-    else $order=aih_image_prompt_order($order,$prompt,$requested);
+    else $order=aih_image_prompt_order($order,$prompt,$requested,$settings);
     foreach($order as $id){$id=(string)$id;if(!isset($catalog[$id]))continue;$stateId=aih_image_state_id($id);$cool=(int)($state[$stateId]['cooldown_until']??0);if($cool>time()){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'cooldown','until'=>$cool];continue;}
         if(!aih_image_provider_configured($id,$settings)){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'not_configured'];continue;}
         if($id==='free_web'){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'requires_v062_ui'];continue;}

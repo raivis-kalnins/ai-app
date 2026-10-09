@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const AIH_VERSION = '0.6.5';
+const AIH_VERSION = '0.6.8';
 const AIH_ROOT = __DIR__ . '/..';
 const AIH_STORAGE = AIH_ROOT . '/storage';
 const AIH_UPLOADS = AIH_STORAGE . '/uploads';
@@ -133,6 +133,9 @@ function aih_default_settings(): array {
             'aihorde_model'=>'',
             'aihorde_timeout'=>180,
             'aihorde_steps'=>16,
+            'speed_mode'=>'fast',
+            'aihorde_queue_limit'=>45,
+            'web_image_cache_ttl'=>900,
             'unsplash_access_key'=>'',
             'pexels_api_key'=>'',
             'pixabay_api_key'=>'',
@@ -227,6 +230,10 @@ function aih_migrate_settings(array $current): array {
     if (($current['providers']['models']['ollama_local'] ?? '') === 'qwen3:8b') $merged['providers']['models']['ollama_local']='auto';
     // v0.6.2: raise the old fast AI Horde default slightly for better detail while retaining user overrides.
     if ((int)($current['images']['aihorde_steps'] ?? 0) === 10) $merged['images']['aihorde_steps']=16;
+    // v0.6.8 defaults older installs to Fast image routing: slow anonymous Horde queues
+    // fall through to reusable web photography instead of blocking the chat for many minutes.
+    if(!isset($current['images']['speed_mode']))$merged['images']['speed_mode']='fast';
+    if(!isset($current['images']['aihorde_queue_limit']))$merged['images']['aihorde_queue_limit']=45;
     // v0.6.3 keeps existing custom prompts/keys but adds smart grounding and more image/search connections via merge_missing.
     return $merged;
 }
@@ -283,7 +290,7 @@ function aih_headers(bool $html=true): void {
     header('Cache-Control: no-store');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
     if ($html) {
-        header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://*.hcaptcha.com; script-src 'self' 'wasm-unsafe-eval' https://js.puter.com https://esm.run https://cdn.jsdelivr.net https://*.hcaptcha.com; connect-src 'self' https: wss:; frame-src https://*.puter.com https://*.hcaptcha.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+        header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval' https://js.puter.com https://esm.run https://cdn.jsdelivr.net https://*.hcaptcha.com; connect-src 'self' https: wss:; frame-src https://*.puter.com https://*.hcaptcha.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     }
 }
 

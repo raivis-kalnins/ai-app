@@ -44,3 +44,12 @@ Normal web grounding can merge DuckDuckGo, Wikipedia, SearXNG, optional Brave Se
 ## Free-source design composition
 
 The browser composer is intentionally deterministic rather than another paid image-generation dependency. It can use up to four selected search results, crop them into a selected template, add overlay text and export PNG. Clear “create card/poster/social graphic/moodboard from available sources” prompts can auto-pick results and return a saved composed image in Chat. Source/creator metadata remains attached to the result workflow, and composition never overrides the source licence.
+
+## v0.6.6 visual-composition completion rule
+
+For greeting cards, birthday/holiday cards, posters and any request that explicitly asks for text on an image, a background image is only an intermediate result. The router must extract the exact copy, create or select a suitable background, run the compositor, verify that the final PNG contains readable overlay text, save the composed asset, and return that finished file. Image-generation models are treated as background generators; they are not trusted to spell user copy correctly.
+
+
+## v0.6.7 visual-quality rule
+
+Greeting-card requests are design tasks. Prefer a purpose-built generated background before generic stock search when a free/local generator is available. Strip overlay copy from the background-generation prompt, reserve visual breathing room for the greeting, and always complete the browser-side typography/composition pass before presenting the final card. Reusable web images remain the fallback and must retain source/licence metadata in the UI.
