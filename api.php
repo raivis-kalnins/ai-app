@@ -38,7 +38,8 @@ try {
    $messages[]=['role'=>'user','content'=>$userContent];$res=aih_ai_chat($messages,$s,$task);if(!empty($ground['rows'])){$res['sources']=array_map(fn($r)=>['title'=>(string)($r['title']??''),'url'=>(string)($r['url']??''),'engine'=>(string)($r['engine']??'')],array_slice($ground['rows'],0,10));$res['search_engines']=$ground['engines'];}$res['smart_mode']=true;aih_json($res,$res['ok']?200:503);
  }
  if($action==='chat_compare'){$in=aih_json_input();$msg=trim((string)($in['message']??''));$hist=$in['history']??[];if($msg==='')aih_json(['ok'=>false,'error'=>'Message is empty'],422);$s=aih_settings();$lang=(string)($in['lang']??'en');if(!array_key_exists($lang,aih_languages()))$lang='en';$messages=[['role'=>'system','content'=>(string)($s['system_prompt']??'You are helpful.').aih_plugins_system_context().' Give an independent answer for comparison. Reply in interface language '.$lang.'.']];if(is_array($hist))foreach(array_slice($hist,-12)as$h)if(is_array($h)&&isset($h['role'],$h['content']))$messages[]=['role'=>(string)$h['role'],'content'=>substr((string)$h['content'],0,9000)];$messages[]=['role'=>'user','content'=>substr($msg,0,16000)];$res=aih_ai_compare($messages,$s,3);aih_json($res,200);}
- if($action==='search'){$in=aih_json_input();$res=aih_run_search($in);aih_json($res,$res['ok']?200:422);}
+ if($action==='search'){$in=aih_json_input();if(session_status()===PHP_SESSION_ACTIVE)session_write_close();$res=aih_run_search($in);aih_json($res,$res['ok']?200:422);}
+ if($action==='search_analyze'){$in=aih_json_input();if(session_status()===PHP_SESSION_ACTIVE)session_write_close();$res=aih_analyze_search_report((string)($in['report_id']??''));aih_json($res,!empty($res['ok'])?200:404);}
  if($action==='generate_project'){$in=aih_json_input();$res=aih_generate_project($in);aih_json($res,$res['ok']?200:500);}
  if($action==='package_project'){$in=aih_json_input();$res=aih_package_project_text($in);aih_json($res,$res['ok']?200:422);}
  if($action==='report_client_summary'){$in=aih_json_input();$id=preg_replace('/[^A-Za-z0-9_-]/','',(string)($in['report_id']??''));$text=trim((string)($in['text']??''));$provider=trim((string)($in['provider']??'Browser AI'));if($id===''||$text==='')aih_json(['ok'=>false,'error'=>'Missing report summary'],422);if(strlen($text)>24000)$text=substr($text,0,24000);$path=AIH_REPORTS.'/'.$id.'.json';if(!is_file($path))aih_json(['ok'=>false,'error'=>'Report not found'],404);aih_update_json($path,function($r)use($text,$provider){$r=is_array($r)?$r:[];$r['ai_summary']=['text'=>$text,'provider'=>$provider];return $r;},[]);aih_json(['ok'=>true]);}
@@ -72,6 +73,7 @@ try {
  }
  if($action==='cleanup'){$r=aih_cleanup_expired(true);aih_json(['ok'=>true]+$r);}
  if($action==='settings'){
+   if($_SERVER['REQUEST_METHOD']!=='POST'){header('Allow: POST');aih_json(['ok'=>false,'error'=>'Use POST for settings changes.'],405);}
    $in=aih_json_input();$s=aih_settings();$p=&$s['providers'];$catalog=aih_provider_catalog();
    foreach($catalog as $id=>$meta){
      if(array_key_exists('enabled_'.$id,$in))$p['enabled'][$id]=(bool)$in['enabled_'.$id];
@@ -125,8 +127,26 @@ try {
    $s['ui']=$s['ui']??[];
    if(array_key_exists('ui_language',$in)&&array_key_exists((string)$in['ui_language'],aih_languages()))$s['ui']['language']=(string)$in['ui_language'];
    if(array_key_exists('ui_theme',$in)&&in_array((string)$in['ui_theme'],['light','dark'],true))$s['ui']['theme']=(string)$in['ui_theme'];
-   $new=(string)($in['new_password']??'');if($new!==''){if(strlen($new)<10)aih_json(['ok'=>false,'error'=>'New password must be at least 10 characters'],422);$s['password_hash']=password_hash($new,PASSWORD_DEFAULT);aih_remember_revoke_all();}
-   aih_save_settings($s);aih_audit('settings_saved');aih_json(['ok'=>true]);
+   $new=(string)($in['new_password']??'');
+   if($new!==''){
+     if(!aih_auth_attempt_reserve('change'))aih_json(['ok'=>false,'error'=>'Too many attempts. Try again after 15 minutes.'],429);
+     if(!aih_auth_verify((string)($in['current_password']??''),aih_settings()))aih_json(['ok'=>false,'error'=>'Enter your correct current password to change it.'],403);
+     $validation=aih_new_password_error($new);
+     if($validation!=='')aih_json(['ok'=>false,'error'=>$validation],422);
+     if(!hash_equals($new,(string)($in['confirm_password']??'')))aih_json(['ok'=>false,'error'=>'The new password and confirmation do not match.'],422);
+     if(aih_auth_verify($new,aih_settings()))aih_json(['ok'=>false,'error'=>'Choose a different password.'],422);
+     $s['password_hash']=password_hash($new,PASSWORD_DEFAULT);
+   }
+   aih_save_settings($s);
+   if($new!==''){
+     aih_remember_revoke_all();
+     // Keep this tab's CSRF token while rotating its session ID. Other sessions
+     // and every remember-me cookie stop working against the new hash.
+     aih_auth_mark_logged_in((string)$s['password_hash'],false);
+     aih_auth_attempt_clear('change');
+     aih_audit('password_changed');
+   }
+   aih_audit('settings_saved');aih_json(['ok'=>true,'password_changed'=>$new!=='']);
  }
  aih_json(['ok'=>false,'error'=>'Unknown action'],404);
 } catch(Throwable $e){aih_json(['ok'=>false,'error'=>'Server error: '.$e->getMessage()],500);}

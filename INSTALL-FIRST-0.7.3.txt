@@ -1,0 +1,33 @@
+FREE AI HUB 63 v0.7.3 — PRIVATE FULL REPLACEMENT FOR ai.63.lv
+
+NO 48-CHARACTER ACTIVATION CODE. NO HIDDEN LOGIN FILE. NO SSH.
+
+1. In cPanel, BACK UP the current website, especially storage/settings.json,
+   storage/chats/, all files, and config.local.php (if present).
+2. Open your ai.63.lv document root in cPanel File Manager (the same folder
+   that currently contains index.php). Upload the new full ZIP THERE.
+3. Click Extract IN THIS FOLDER and confirm overwriting/replacing old files.
+   This ZIP has index.php at its ROOT and does not make another ai-app/ folder.
+   If prompted, replace includes/bootstrap.php, assets/app.css,
+   service-worker.js, index.php and the other existing app files.
+4. DO NOT delete your existing storage/settings.json, chats, uploaded files,
+   saved provider API keys or config.local.php. The ZIP does not include them.
+5. Open https://ai.63.lv/ and check the small footer displays v0.7.3.
+   Sign in using the password you already provided in this chat.
+6. Any existing optional hCaptcha challenge still applies if enabled.
+   After entering the app, you can disable it in Settings if you prefer.
+7. In Settings -> Security, CHANGE THE LOGIN PASSWORD to a different unique
+   password (15+ characters). This private package must not be made public.
+
+The app automatically restores login if a saved owner hash was blank/retired,
+without resetting other settings. If an already valid unique password exists,
+that password is NOT overwritten.
+
+If the banner/layout is still old, ensure assets/app.css was overwritten,
+check the footer release number, and hard refresh your browser (Ctrl+Shift+R).
+If it still says owner password not configured, check that includes/bootstrap.php
+was overwritten and PHP can write to storage/settings.json (normal owner
+permissions for your hosting account).
+
+Never post the password or this ZIP publicly. Do not put this private ZIP
+in a public GitHub repository.

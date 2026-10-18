@@ -1,0 +1,13 @@
+# Merge into your EXISTING server block; do not replace your working PHP handler.
+# Put these before broader regex locations (especially the PHP location).
+# The example assumes the application is at the domain root. For /ai/ installations,
+# prefix /ai to each relevant expression. Existing ^~ locations can take precedence:
+# review the effective nginx config and TEST every private path after reload.
+location ~* ^/(storage|includes|tools|tests|docs)(/|$) { return 404; }
+location ~ (^|/)\.(?!well-known/) { return 404; }
+location ~* ^/config(?:\.[a-z0-9_-]+)*\.php(?:\..*)?$ { return 404; }
+location ~* (\.(zip|sql|sqlite|db|bak|backup|old|orig|log|pem|key|p12|pfx)|~)$ { return 404; }
+
+# Keep your usual location ~ \.php$ block and PHP-FPM socket configuration.
+# Validate with: nginx -t
+# /storage/settings.json must return 403/404, NEVER a JSON document.

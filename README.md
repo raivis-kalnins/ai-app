@@ -1,3 +1,77 @@
+> **v0.7.3 — PRIVATE ai.63.lv replacement:** This site-specific full ZIP restores the requested login password directly from a new bcrypt hash in the protected PHP application code **when the existing saved owner password is absent or retired**. It requires **NO activation code, no hidden file, no owner setup page and no SSH**. Simply replace the application's code files, **preserve** your current `storage/` data and `config.local.php`, and sign in. All 15 language flags remain; the DigitalPulse advertisement is now **below the login form** and before the footer. See `INSTALL-FIRST-0.7.3.txt`. **Never publish this personalized ZIP or its code on GitHub; rotate the password to a new unique password once signed in.**
+
+> **v0.7.2 private cPanel login repair:** This particular ZIP contains a temporary, private owner-login activation file at `storage/.owner-login-once` (a salted password hash, no plaintext). Merge it into your existing `storage/` folder when uploading the full app, **without overwriting `storage/settings.json`**. Your requested password will work after the next page load if the login is currently unconfigured. This is a one-site-only private recovery ZIP; **do not publish or commit it**. See `UPGRADE-0.7.2.md`.
+
+## v0.7.1 — cPanel login activation and UI repair
+
+- Fixed intentional login-page HTTP 503 when a unique password has not yet been set.
+  The login page now returns 200 but authentication stays securely disabled.
+- Added **one-time** owner setup through `owner-setup.php`, gated by an owner-created,
+  private random code in `storage/owner-setup.key`. No shared/default password.
+- Removed duplicate moon/sun icon and aligned the desktop login form with the
+  DigitalPulse panel. Mobile stacks the same elements without horizontal overflow.
+- Kept the v0.7.0 search improvements, 15 SVG language flags and app integrations.
+
+**IMPORTANT:** See `UPGRADE-0.7.1.md` before replacing a live cPanel installation.
+
+# Free AI Hub 63 — v0.7.0 (Complete cPanel release)
+
+This full package is based on v0.6.9 **security-fixed** and preserves the existing
+AI router, plugins, chat, image composer, report generation, login and PWA.
+
+## What's improved
+
+- **Real SVG flags for all 15 languages** on both login and workspace. No reliance
+  on emoji rendering or third-party flag assets. Accessible dropdown with keyboard support.
+- **DigitalPulse promotion** before the footer on login and in the workspace,
+  plus an unobtrusive developer credit. Text adapts to all 15 languages.
+- **Improved UI** with clearer typography, spacing, keyboard focus states,
+  responsive menus and an improved dark/light theme button.
+- **Faster Smart Search**: initial source results return before optional AI summary
+  and metadata enrichment, which run in a separate authenticated request.
+  Independent SearXNG, Brave and developer/research lookups run concurrently
+  where cURL multi is available. Search results can be filtered and sorted in-place
+  without another request. The 10-minute response cache is updated after analysis.
+- **Lighter login**: loads a small login-specific script instead of the entire app
+  workspace JavaScript and only basic fonts. PWA asset cache version is updated.
+
+**Note:** Search speed depends on third-party provider response times, server cURL
+capabilities and configured AI services; no external search APIs or live provider
+accounts were tested here. Changes were tested locally; the live site was not modified.
+
+## Upgrade on cPanel (existing installation)
+
+1. Back up your current `ai.63.lv` website and especially `storage/` and
+   `config.local.php` **outside the web root** before making changes.
+2. Upload and extract this **root-level ZIP** directly in your existing website
+   document root, where `index.php` already exists. Overwrite application files, but keep the existing
+   server's `storage/` directory and `config.local.php`. Do not clear the data
+   directory. Include hidden `.htaccess` files when copying.
+3. **This private ZIP** automatically restores the requested password on the first
+   page load if `storage/settings.json` has no usable owner hash. Existing working
+   owner passwords are preserved. No owner-setup code or hidden file is needed.
+   Never upload or publish plaintext passwords or API keys.
+4. Clear browser/PWA cache if old styling persists; reload `https://ai.63.lv/`
+   and check login flags, Latvian interface, footer promo, search and AI routes.
+
+For this **private** installation package, the requested login password is preconfigured
+as a salted bcrypt hash for a fresh installation. Generic/public builds should never
+ship a shared password; use `tools/set-password.php` or `owner-setup.php` instead.
+
+Developer notes, prior features and provider setup remain documented below.
+
+---
+
+# Security baseline inherited from v0.6.9
+
+Read **SECURITY-UPDATE.md before uploading**. The shipped default credential has
+been retired. Existing unique passwords are preserved, but installations still
+using the old bundled hash must set a new password with `php tools/set-password.php`.
+The **private v0.7.3 build is an exception** to the generic no-preconfigured-password
+policy: it contains a site-specific bcrypt password seed in `includes/bootstrap.php`,
+never plaintext. It does not contain runtime settings or API keys. Do not delete or replace
+your live storage directory. Include hidden `.htaccess` / `.gitignore` files.
+
 # Free AI Hub 63 v0.6.8
 
 ## v0.6.8 Premium UI + Fast Cards
@@ -453,7 +527,9 @@ Requirements:
 
 Upload the folder contents to the domain web root.
 
-The requested initial password is stored only as a bcrypt hash in `config.example.php`. Sign in using the password chosen for this project, then change it in Settings. It is never saved as plaintext in `storage/settings.json`.
+In the generic repository no default password is supplied. **For this private v0.7.3 ZIP**,
+the site-specific bcrypt login seed is already installed, so running this tool is not needed.
+For reusable/public deployments, run `php tools/set-password.php` from the application directory. Alternatively, supply a server-only `AIH_INITIAL_PASSWORD_HASH` for a fresh installation. See SECURITY-UPDATE.md for no-SSH recovery and safe upgrade instructions. The password is stored as a hash in private server runtime settings, not in source control.
 
 ### Upgrade from an earlier version
 
@@ -467,7 +543,7 @@ api.php                   authenticated AJAX API
 download.php              streamed downloads up to 1 GB
 report.php                HTML / JSON / PDF reports
 cleanup.php               48-hour cleanup
-config.example.php        application defaults + password hash
+config.example.php        non-secret defaults; no shared password hash
 .htaccess                 Apache hardening
 .user.ini                 1 GB PHP upload settings
 manifest.webmanifest
@@ -505,10 +581,10 @@ storage/
 
 ## Security notes
 
-- Change the initial password after deployment.
+- Set a unique password before deployment; do not reuse the retired bundled login.
 - Keep HTTPS enabled.
 - Never commit `storage/settings.json`; it can contain provider tokens.
-- Apache protection is included for `storage/` and `plugins/`; on Nginx explicitly deny direct web access to `/storage/` and `/plugins/`.
+- Apache protection is included for `storage/`, `includes/`, `tools/`, `tests/` and `docs/`. Nginx does not read .htaccess: apply the rules in docs/nginx-security.conf.example and verify the protected paths return 403/404.
 - The app intentionally does not scrape logged-in ChatGPT, Claude, Grok, Kimi, Copilot or other consumer web sessions as unofficial APIs.
 - Free tiers and model catalogues change, so model IDs, keys and provider order remain editable in Settings.
 

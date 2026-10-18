@@ -125,8 +125,39 @@ function aih_search_ollama_web(string $q,string $key,int $limit): array {
 function aih_search_searxng(string $q,string $base,int $limit): array {
     $base=rtrim(trim($base),'/');if($base==='')return [];
     $url=$base.'/search?format=json&safesearch=1&q='.rawurlencode($q);$r=aih_http('GET',$url,null,['Accept: application/json'],30);
-    if($r['code']<200||$r['code']>=300)return [];$j=json_decode($r['body'],true);$out=[];
-    foreach(($j['results']??[])as$x){$out[]=['title'=>(string)($x['title']??''),'url'=>(string)($x['url']??''),'snippet'=>strip_tags((string)($x['content']??'')),'engine'=>'searxng'];if(count($out)>=$limit)break;}return $out;
+    return aih_parse_searxng_response($r,$limit);
+}
+
+function aih_parse_searxng_response(array $r,int $limit): array {
+    if(($r['code']??0)<200||($r['code']??0)>=300)return [];
+    $j=json_decode((string)($r['body']??''),true);$out=[];
+    foreach((is_array($j)?($j['results']??[]):[]) as$x){
+        if(!is_array($x))continue;
+        $u=(string)($x['url']??'');if(!preg_match('#^https?://#i',$u))continue;
+        $out[]=['title'=>(string)($x['title']??''),'url'=>$u,'snippet'=>strip_tags((string)($x['content']??'')),'engine'=>'searxng'];
+        if(count($out)>=$limit)break;
+    }
+    return $out;
+}
+
+/** Query several configured SearXNG instances concurrently (bounded per batch). */
+function aih_search_searxng_batch(array $queries,array $urls,int $limit=5): array {
+    $requests=[];$contexts=[];
+    foreach($urls as $base)foreach(array_slice($queries,0,8) as $q){
+        $requests[]=['url'=>rtrim($base,'/').'/search?format=json&safesearch=1&q='.rawurlencode((string)$q['q']),'headers'=>['Accept: application/json']];
+        $contexts[]=$q;
+    }
+    $all=[];$offset=0;
+    foreach(array_chunk($requests,10) as $chunk){
+        foreach(aih_multi_get($chunk,18) as $i=>$response){
+            $ctx=$contexts[$offset+$i];
+            foreach(aih_parse_searxng_response($response,$limit) as $row){
+                $row['query']=$ctx['q'];$row['country']=$ctx['country'];$row['domain']=$ctx['domain'];$row['sector']=$ctx['sector']??'ALL';$all[]=$row;
+            }
+        }
+        $offset+=count($chunk);
+    }
+    return $all;
 }
 
 function aih_search_searxng_urls(string $value): array {
@@ -137,6 +168,29 @@ function aih_search_brave(string $q,string $key,int $limit): array {
     $key=trim($key);if($key==='')return [];$url='https://api.search.brave.com/res/v1/web/search?'.http_build_query(['q'=>$q,'count'=>max(1,min(20,$limit)),'safesearch'=>'moderate','text_decorations'=>'false']);
     $r=aih_http('GET',$url,null,['Accept: application/json','X-Subscription-Token: '.$key],20);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
     foreach((is_array($j)?($j['web']['results']??[]):[]) as$x){if(!is_array($x))continue;$u=(string)($x['url']??'');if(!preg_match('#^https?://#i',$u))continue;$out[]=['title'=>aih_web_image_plain($x['title']??''),'url'=>$u,'snippet'=>aih_web_image_plain($x['description']??''),'engine'=>'brave'];if(count($out)>=$limit)break;}return $out;
+}
+
+/** Search the selected Brave queries concurrently rather than serially. */
+function aih_search_brave_batch(array $queries,string $key,int $limit=8): array {
+    if(trim($key)==='')return [];
+    $requests=[];$contexts=[];
+    foreach(array_slice($queries,0,3) as $q){
+        $url='https://api.search.brave.com/res/v1/web/search?'.http_build_query(['q'=>$q['q'],'count'=>max(1,min(20,$limit)),'safesearch'=>'moderate','text_decorations'=>'false']);
+        $requests[]=['url'=>$url,'headers'=>['Accept: application/json','X-Subscription-Token: '.$key]];
+        $contexts[]=$q;
+    }
+    $all=[];
+    foreach(aih_multi_get($requests,18) as $i=>$response){
+        if(($response['code']??0)<200||($response['code']??0)>=300)continue;
+        $j=json_decode((string)($response['body']??''),true);$ctx=$contexts[$i];$n=0;
+        foreach((is_array($j)?($j['web']['results']??[]):[]) as $x){
+            if(!is_array($x))continue;$u=(string)($x['url']??'');if(!preg_match('#^https?://#i',$u))continue;
+            $all[]=['title'=>aih_web_image_plain($x['title']??''),'url'=>$u,'snippet'=>aih_web_image_plain($x['description']??''),'engine'=>'brave',
+                'query'=>$ctx['q'],'country'=>$ctx['country'],'domain'=>$ctx['domain'],'sector'=>$ctx['sector']??'ALL'];
+            if(++$n>=$limit)break;
+        }
+    }
+    return $all;
 }
 
 function aih_search_wikipedia(string $q,string $lang,int $limit): array {
@@ -156,54 +210,73 @@ function aih_search_is_research_query(string $q): bool {
     return (bool)preg_match('/\b(?:research|paper|study|studies|arxiv|science|scientific|benchmark|latest|current|news|release|202[4-9]|evidence|source|sources|compare|comparison)\b/ui',$q);
 }
 
-function aih_search_github(string $q,int $limit=5): array {
+function aih_search_github(string $q,int $limit=5,?array $prefetched=null): array {
     $url='https://api.github.com/search/repositories?'.http_build_query(['q'=>$q,'sort'=>'stars','order'=>'desc','per_page'=>max(1,min(10,$limit))]);
-    $r=aih_http('GET',$url,null,['Accept: application/vnd.github+json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
+    $r=$prefetched??aih_http('GET',$url,null,['Accept: application/vnd.github+json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
     foreach((is_array($j)?($j['items']??[]):[]) as$x){if(!is_array($x))continue;$u=(string)($x['html_url']??'');if(!preg_match('#^https://github\.com/#i',$u))continue;$desc=trim((string)($x['description']??''));$bits=[];if($desc!=='')$bits[]=$desc;if(isset($x['stargazers_count']))$bits[]='★ '.number_format((int)$x['stargazers_count']);if(!empty($x['language']))$bits[]=(string)$x['language'];$out[]=['title'=>(string)($x['full_name']??$x['name']??'GitHub repository'),'url'=>$u,'snippet'=>implode(' · ',$bits),'engine'=>'github'];if(count($out)>=$limit)break;}return $out;
 }
 
-function aih_search_stackoverflow(string $q,int $limit=5): array {
+function aih_search_stackoverflow(string $q,int $limit=5,?array $prefetched=null): array {
     $url='https://api.stackexchange.com/2.3/search/advanced?'.http_build_query(['site'=>'stackoverflow','q'=>$q,'pagesize'=>max(1,min(10,$limit)),'order'=>'desc','sort'=>'relevance','filter'=>'default']);
-    $r=aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
+    $r=$prefetched??aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
     foreach((is_array($j)?($j['items']??[]):[]) as$x){if(!is_array($x))continue;$u=(string)($x['link']??'');if(!preg_match('#^https?://stackoverflow\.com/#i',$u))continue;$tags=is_array($x['tags']??null)?implode(', ',array_slice($x['tags'],0,5)):'';$snippet='Score '.(int)($x['score']??0).(!empty($x['is_answered'])?' · answered':'').($tags!==''?' · '.$tags:'');$out[]=['title'=>html_entity_decode(strip_tags((string)($x['title']??'Stack Overflow question')),ENT_QUOTES|ENT_HTML5,'UTF-8'),'url'=>$u,'snippet'=>$snippet,'engine'=>'stackoverflow'];if(count($out)>=$limit)break;}return $out;
 }
 
-function aih_search_npm(string $q,int $limit=5): array {
-    $url='https://registry.npmjs.org/-/v1/search?'.http_build_query(['text'=>$q,'size'=>max(1,min(10,$limit))]);$r=aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
+function aih_search_npm(string $q,int $limit=5,?array $prefetched=null): array {
+    $url='https://registry.npmjs.org/-/v1/search?'.http_build_query(['text'=>$q,'size'=>max(1,min(10,$limit))]);$r=$prefetched??aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
     foreach((is_array($j)?($j['objects']??[]):[]) as$x){$pkg=is_array($x['package']??null)?$x['package']:[];$name=trim((string)($pkg['name']??''));if($name==='')continue;$u='https://www.npmjs.com/package/'.rawurlencode($name);$desc=trim((string)($pkg['description']??''));$ver=trim((string)($pkg['version']??''));$out[]=['title'=>$name.($ver!==''?' · '.$ver:''),'url'=>$u,'snippet'=>$desc,'engine'=>'npm'];if(count($out)>=$limit)break;}return $out;
 }
 
-function aih_search_packagist(string $q,int $limit=5): array {
-    $url='https://packagist.org/search.json?'.http_build_query(['q'=>$q,'per_page'=>max(1,min(10,$limit))]);$r=aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
+function aih_search_packagist(string $q,int $limit=5,?array $prefetched=null): array {
+    $url='https://packagist.org/search.json?'.http_build_query(['q'=>$q,'per_page'=>max(1,min(10,$limit))]);$r=$prefetched??aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
     foreach((is_array($j)?($j['results']??[]):[]) as$x){if(!is_array($x))continue;$name=trim((string)($x['name']??''));if($name==='')continue;$u=(string)($x['url']??('https://packagist.org/packages/'.$name));$out[]=['title'=>$name,'url'=>$u,'snippet'=>trim((string)($x['description']??'')),'engine'=>'packagist'];if(count($out)>=$limit)break;}return $out;
 }
 
-function aih_search_wordpress_directory(string $q,int $limit=5): array {
+function aih_search_wordpress_directory(string $q,int $limit=5,?array $prefetched=null): array {
     if(!preg_match('/\b(?:wordpress|woocommerce|gutenberg|elementor|plugin|theme)\b/ui',$q))return [];
     $term=trim(preg_replace('/\b(?:wordpress|woocommerce|gutenberg|elementor|plugin|plugins|theme|themes)\b/ui',' ',$q)??$q);if($term==='')$term=$q;$out=[];$per=max(1,min(6,$limit));
     $pluginUrl='https://api.wordpress.org/plugins/info/1.2/?'.http_build_query(['action'=>'query_plugins','request'=>['search'=>$term,'per_page'=>$per,'page'=>1]]);
-    $r=aih_http('GET',$pluginUrl,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']>=200&&$r['code']<300){$j=json_decode((string)$r['body'],true);foreach((is_array($j)?($j['plugins']??[]):[]) as$x){if(!is_array($x))continue;$slug=trim((string)($x['slug']??''));$name=trim((string)($x['name']??$slug));if($slug===''||$name==='')continue;$bits=[];if(!empty($x['short_description']))$bits[]=aih_web_image_plain($x['short_description']);if(isset($x['active_installs']))$bits[]=number_format((int)$x['active_installs']).' active installs';if(!empty($x['version']))$bits[]='v'.(string)$x['version'];$out[]=['title'=>$name.' · WordPress plugin','url'=>'https://wordpress.org/plugins/'.rawurlencode($slug).'/','snippet'=>implode(' · ',$bits),'engine'=>'wordpress.org'];if(count($out)>=$limit)break;}}
+    $r=$prefetched??aih_http('GET',$pluginUrl,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']>=200&&$r['code']<300){$j=json_decode((string)$r['body'],true);foreach((is_array($j)?($j['plugins']??[]):[]) as$x){if(!is_array($x))continue;$slug=trim((string)($x['slug']??''));$name=trim((string)($x['name']??$slug));if($slug===''||$name==='')continue;$bits=[];if(!empty($x['short_description']))$bits[]=aih_web_image_plain($x['short_description']);if(isset($x['active_installs']))$bits[]=number_format((int)$x['active_installs']).' active installs';if(!empty($x['version']))$bits[]='v'.(string)$x['version'];$out[]=['title'=>$name.' · WordPress plugin','url'=>'https://wordpress.org/plugins/'.rawurlencode($slug).'/','snippet'=>implode(' · ',$bits),'engine'=>'wordpress.org'];if(count($out)>=$limit)break;}}
     if(count($out)<$limit&&preg_match('/\b(?:theme|themes|wordpress)\b/ui',$q)){$themeUrl='https://api.wordpress.org/themes/info/1.2/?'.http_build_query(['action'=>'query_themes','request'=>['search'=>$term,'per_page'=>$per,'page'=>1]]);$tr=aih_http('GET',$themeUrl,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($tr['code']>=200&&$tr['code']<300){$tj=json_decode((string)$tr['body'],true);foreach((is_array($tj)?($tj['themes']??[]):[]) as$x){if(!is_array($x))continue;$slug=trim((string)($x['slug']??''));$name=trim((string)($x['name']??$slug));if($slug===''||$name==='')continue;$bits=[];if(!empty($x['description']))$bits[]=aih_web_image_plain($x['description']);if(isset($x['rating']))$bits[]='rating '.(int)$x['rating'].'/100';if(!empty($x['version']))$bits[]='v'.(string)$x['version'];$out[]=['title'=>$name.' · WordPress theme','url'=>'https://wordpress.org/themes/'.rawurlencode($slug).'/','snippet'=>implode(' · ',$bits),'engine'=>'wordpress.org'];if(count($out)>=$limit)break;}}}
     return array_slice($out,0,$limit);
 }
 
-function aih_search_hackernews(string $q,int $limit=5): array {
-    $url='https://hn.algolia.com/api/v1/search?'.http_build_query(['query'=>$q,'tags'=>'story','hitsPerPage'=>max(1,min(10,$limit))]);$r=aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
+function aih_search_hackernews(string $q,int $limit=5,?array $prefetched=null): array {
+    $url='https://hn.algolia.com/api/v1/search?'.http_build_query(['query'=>$q,'tags'=>'story','hitsPerPage'=>max(1,min(10,$limit))]);$r=$prefetched??aih_http('GET',$url,null,['Accept: application/json','User-Agent: Free-AI-Hub-63'],18);if($r['code']<200||$r['code']>=300)return [];$j=json_decode((string)$r['body'],true);$out=[];
     foreach((is_array($j)?($j['hits']??[]):[]) as$x){if(!is_array($x))continue;$title=trim((string)($x['title']??''));if($title==='')continue;$u=trim((string)($x['url']??''));if($u===''&&!empty($x['objectID']))$u='https://news.ycombinator.com/item?id='.rawurlencode((string)$x['objectID']);if(!preg_match('#^https?://#i',$u))continue;$snippet='Hacker News'.(isset($x['points'])?' · '.(int)$x['points'].' points':'').(isset($x['num_comments'])?' · '.(int)$x['num_comments'].' comments':'');$out[]=['title'=>$title,'url'=>$u,'snippet'=>$snippet,'engine'=>'hackernews'];if(count($out)>=$limit)break;}return $out;
 }
 
-function aih_search_arxiv(string $q,int $limit=5): array {
-    if(!function_exists('simplexml_load_string'))return [];$url='https://export.arxiv.org/api/query?'.http_build_query(['search_query'=>'all:'.$q,'start'=>0,'max_results'=>max(1,min(8,$limit)),'sortBy'=>'relevance','sortOrder'=>'descending']);$r=aih_http('GET',$url,null,['Accept: application/atom+xml','User-Agent: Free-AI-Hub-63'],20);if($r['code']<200||$r['code']>=300)return [];
+function aih_search_arxiv(string $q,int $limit=5,?array $prefetched=null): array {
+    if(!function_exists('simplexml_load_string'))return [];$url='https://export.arxiv.org/api/query?'.http_build_query(['search_query'=>'all:'.$q,'start'=>0,'max_results'=>max(1,min(8,$limit)),'sortBy'=>'relevance','sortOrder'=>'descending']);$r=$prefetched??aih_http('GET',$url,null,['Accept: application/atom+xml','User-Agent: Free-AI-Hub-63'],20);if($r['code']<200||$r['code']>=300)return [];
     libxml_use_internal_errors(true);$xml=@simplexml_load_string((string)$r['body']);if(!$xml){libxml_clear_errors();return [];}$out=[];foreach($xml->entry as$entry){$title=trim(preg_replace('/\s+/u',' ',(string)$entry->title)??(string)$entry->title);$summary=trim(preg_replace('/\s+/u',' ',(string)$entry->summary)??(string)$entry->summary);$u=trim((string)$entry->id);if($title===''||!preg_match('#^https?://#i',$u))continue;$out[]=['title'=>$title,'url'=>$u,'snippet'=>(function_exists('mb_substr')?mb_substr($summary,0,420):substr($summary,0,420)),'engine'=>'arxiv'];if(count($out)>=$limit)break;}libxml_clear_errors();return $out;
 }
 
 function aih_search_special_sources(string $q,bool $developer=true,bool $research=true,int $limitEach=4): array {
-    $rows=[];$engines=[];
+    // Previously, each public developer/research API was called serially; one slow
+    // service blocked every other result. Fetch independent URLs concurrently.
+    $tasks=[];
+    $get=static fn(string $url,array $headers=[])=>['url'=>$url,'headers'=>array_merge(($headers?:['Accept: application/json']),['User-Agent: Free-AI-Hub-63'])];
     if($developer&&aih_search_is_developer_query($q)){
-        foreach([['github','aih_search_github'],['stackoverflow','aih_search_stackoverflow'],['npm','aih_search_npm'],['packagist','aih_search_packagist'],['wordpress.org','aih_search_wordpress_directory']] as[$name,$fn]){$got=$fn($q,$limitEach);if($got){$rows=array_merge($rows,$got);$engines[]=$name;}}
+        $tasks['github']=['aih_search_github',$get('https://api.github.com/search/repositories?'.http_build_query(['q'=>$q,'sort'=>'stars','order'=>'desc','per_page'=>max(1,min(10,$limitEach))]),['Accept: application/vnd.github+json'])];
+        $tasks['stackoverflow']=['aih_search_stackoverflow',$get('https://api.stackexchange.com/2.3/search/advanced?'.http_build_query(['site'=>'stackoverflow','q'=>$q,'pagesize'=>max(1,min(10,$limitEach)),'order'=>'desc','sort'=>'relevance','filter'=>'default']))];
+        $tasks['npm']=['aih_search_npm',$get('https://registry.npmjs.org/-/v1/search?'.http_build_query(['text'=>$q,'size'=>max(1,min(10,$limitEach))]))];
+        $tasks['packagist']=['aih_search_packagist',$get('https://packagist.org/search.json?'.http_build_query(['q'=>$q,'per_page'=>max(1,min(10,$limitEach))]))];
+        if(preg_match('/\b(?:wordpress|woocommerce|gutenberg|elementor|plugin|theme)\b/ui',$q)){
+            $term=trim(preg_replace('/\b(?:wordpress|woocommerce|gutenberg|elementor|plugin|plugins|theme|themes)\b/ui',' ',$q)??$q);if($term==='')$term=$q;
+            $url='https://api.wordpress.org/plugins/info/1.2/?'.http_build_query(['action'=>'query_plugins','request'=>['search'=>$term,'per_page'=>max(1,min(6,$limitEach)),'page'=>1]]);
+            $tasks['wordpress.org']=['aih_search_wordpress_directory',$get($url)];
+        }
     }
     if($research&&aih_search_is_research_query($q)){
-        foreach([['hackernews','aih_search_hackernews'],['arxiv','aih_search_arxiv']] as[$name,$fn]){$got=$fn($q,$limitEach);if($got){$rows=array_merge($rows,$got);$engines[]=$name;}}
+        $tasks['hackernews']=['aih_search_hackernews',$get('https://hn.algolia.com/api/v1/search?'.http_build_query(['query'=>$q,'tags'=>'story','hitsPerPage'=>max(1,min(10,$limitEach))]))];
+        if(function_exists('simplexml_load_string'))$tasks['arxiv']=['aih_search_arxiv',$get('https://export.arxiv.org/api/query?'.http_build_query(['search_query'=>'all:'.$q,'start'=>0,'max_results'=>max(1,min(8,$limitEach)),'sortBy'=>'relevance','sortOrder'=>'descending']),['Accept: application/atom+xml'])];
+    }
+    if(!$tasks)return ['rows'=>[],'engines'=>[]];
+    $responses=aih_multi_get(array_column(array_values($tasks),1),18);
+    $rows=[];$engines=[];$i=0;
+    foreach($tasks as $name=>$task){
+        $parser=$task[0];$got=$parser($q,$limitEach,$responses[$i]??[]);$i++;
+        if($got){$rows=array_merge($rows,$got);$engines[]=$name;}
     }
     return ['rows'=>$rows,'engines'=>$engines];
 }
@@ -243,9 +316,9 @@ function aih_parse_ddg_html(string $html,int $limit): array {
     libxml_clear_errors();return $out;
 }
 
-function aih_search_ddg_batch(array $queries,int $perQuery): array {
+function aih_search_ddg_batch(array $queries,int $perQuery,int $timeout=30): array {
     $req=[];foreach($queries as $x)$req[]=['url'=>'https://html.duckduckgo.com/html/?q='.rawurlencode((string)$x['q']),'headers'=>['Accept: text/html']];
-    $resp=aih_multi_get($req,30);$all=[];foreach($resp as $i=>$r){if(($r['code']??0)>=200&&($r['code']??0)<300){foreach(aih_parse_ddg_html((string)$r['body'],$perQuery)as$row){$row['query']=$queries[$i]['q'];$row['country']=$queries[$i]['country']??'';$row['domain']=$queries[$i]['domain']??'';$row['sector']=$queries[$i]['sector']??'ALL';$all[]=$row;}}}return $all;
+    $resp=aih_multi_get($req,max(5,min(30,$timeout)));$all=[];foreach($resp as $i=>$r){if(($r['code']??0)>=200&&($r['code']??0)<300){foreach(aih_parse_ddg_html((string)$r['body'],$perQuery)as$row){$row['query']=$queries[$i]['q'];$row['country']=$queries[$i]['country']??'';$row['domain']=$queries[$i]['domain']??'';$row['sector']=$queries[$i]['sector']??'ALL';$all[]=$row;}}}return $all;
 }
 
 function aih_extract_market_fields(array $row): array {
@@ -299,17 +372,61 @@ function aih_run_search(array $input): array {
     if(is_file($cachePath) && time()-(int)(filemtime($cachePath)?:0)<600){$cached=aih_read_json($cachePath,[]);if(is_array($cached)&&!empty($cached['ok'])){$cached['cached']=true;return $cached;}}
     $max=max(10,min(120,(int)($settings['search']['max_results']??60)));$rows=[];$ollamaKey=trim((string)($settings['search']['ollama_web_key']??''));$sx=trim((string)($settings['search']['searxng_url']??''));$braveKey=trim((string)($settings['search']['brave_search_key']??''));$engines=[];$researchNotes=[];
     if($ollamaKey!==''){$engines[]='ollama-web';foreach(array_slice($queries,0,8)as$x){foreach(aih_search_ollama_web($x['q'],$ollamaKey,5)as$r){$r['query']=$x['q'];$r['country']=$x['country'];$r['domain']=$x['domain'];$r['sector']=$x['sector']??'ALL';$rows[]=$r;}}}
-    foreach(aih_search_searxng_urls($sx) as$sxUrl){$engines[]='searxng';foreach(array_slice($queries,0,8)as$x){foreach(aih_search_searxng($x['q'],$sxUrl,5)as$r){$r['query']=$x['q'];$r['country']=$x['country'];$r['domain']=$x['domain'];$r['sector']=$x['sector']??'ALL';$rows[]=$r;}}}
-    if($braveKey!==''){$engines[]='brave';foreach(array_slice($queries,0,3)as$x){foreach(aih_search_brave($x['q'],$braveKey,8)as$r){$r['query']=$x['q'];$r['country']=$x['country'];$r['domain']=$x['domain'];$r['sector']=$x['sector']??'ALL';$rows[]=$r;}}}
+    $sxUrls=aih_search_searxng_urls($sx);
+    if($sxUrls){$engines[]='searxng';$rows=array_merge($rows,aih_search_searxng_batch($queries,$sxUrls,5));}
+    if($braveKey!==''){$engines[]='brave';$rows=array_merge($rows,aih_search_brave_batch($queries,$braveKey,8));}
     $wikiQ=trim((string)($input['q']??($queries[0]['q']??'')));if($wikiQ!==''){$wiki=aih_search_wikipedia($wikiQ,(string)($input['lang']??'en'),6);if($wiki){$engines[]='wikipedia';foreach($wiki as$r){$r['query']=$wikiQ;$r['country']='';$r['domain']='wikipedia.org';$r['sector']=(string)(aih_selected_sectors($input)[0]??'ALL');$rows[]=$r;}}}
     $specialQ=trim((string)($input['q']??($queries[0]['q']??'')));if($specialQ!==''){$special=aih_search_special_sources($specialQ,!empty($settings['search']['developer_grounding']),!empty($settings['search']['research_sources']),6);if(!empty($special['rows'])){$engines=array_merge($engines,$special['engines']);$sector=(string)(aih_selected_sectors($input)[0]??'ALL');foreach($special['rows'] as$r){$r['query']=$specialQ;$r['country']='';$r['domain']=parse_url((string)($r['url']??''),PHP_URL_HOST)?:'';$r['sector']=$sector;$rows[]=$r;}}}
     $p=$settings['providers']??[];$enabled=$p['enabled']??[];$keys=$p['keys']??[];$models=$p['models']??[];
     if(!empty($enabled['gemini'])&&trim((string)($keys['gemini']??''))!==''){$gRows=aih_search_gemini_grounding((string)($queries[0]['q']??($input['q']??'')),trim((string)$keys['gemini']),(string)($models['gemini']??'gemini-3.8-flash'),8);if($gRows){$engines[]='gemini-grounding';foreach($gRows as$r){$r['query']=(string)($input['q']??'');$r['country']='';$r['domain']='';$r['sector']=(string)(aih_selected_sectors($input)[0]??'ALL');$rows[]=$r;}}}
     if(!empty($enabled['groq'])&&trim((string)($keys['groq']??''))!==''){$note=aih_search_groq_browser_note((string)($queries[0]['q']??($input['q']??'')),trim((string)$keys['groq']),(string)($models['groq']??'openai/gpt-oss-20b'));if($note!==''){$engines[]='groq-browser-search';$researchNotes[]=['provider'=>'Groq Browser Search','text'=>$note];}}
-    $ddg=aih_search_ddg_batch($queries,5);if($ddg){$engines[]='duckduckgo';$rows=array_merge($rows,$ddg);}
-    $rows=aih_dedupe_results($rows,$max);if(!empty($settings['search']['ai_enrich']))$rows=aih_ai_enrich_rows($rows);
-    $lang=(string)($input['lang']??'en');$sectorNames=[];foreach(aih_selected_sectors($input) as $sec)$sectorNames[]=$sec==='ALL'?'all sectors':($sec);$summaryQuery=trim((string)($input['q']??'').' | sectors: '.implode(', ',$sectorNames));$summary=aih_search_ai_summary($rows,$summaryQuery,$lang);
-    $id=aih_new_id('report');$report=['id'=>$id,'created_at'=>date(DATE_ATOM),'input'=>$input,'queries'=>$queries,'results'=>$rows,'engines'=>$engines,'research_notes'=>$researchNotes,'ai_summary'=>$summary];aih_write_json(AIH_REPORTS.'/'.$id.'.json',$report);
+    $ddg=aih_search_ddg_batch($queries,5,!empty($input['fast'])?15:30);if($ddg){$engines[]='duckduckgo';$rows=array_merge($rows,$ddg);}
+    $rows=aih_dedupe_results($rows,$max);
+    // Fast mode returns source-backed rows immediately. AI enrichment runs in a second AJAX request.
+    $progressive=!empty($input['fast'])&&count($rows)>0;
+    if(!$progressive&&!empty($settings['search']['ai_enrich']))$rows=aih_ai_enrich_rows($rows);
+    $lang=(string)($input['lang']??'en');$sectorNames=[];foreach(aih_selected_sectors($input) as $sec)$sectorNames[]=$sec==='ALL'?'all sectors':($sec);$summaryQuery=trim((string)($input['q']??'').' | sectors: '.implode(', ',$sectorNames));
+    $summary=$progressive?['text'=>'','provider'=>'']:aih_search_ai_summary($rows,$summaryQuery,$lang);
+    $id=aih_new_id('report');$report=['id'=>$id,'created_at'=>date(DATE_ATOM),'input'=>$input,'queries'=>$queries,'results'=>$rows,'engines'=>$engines,'research_notes'=>$researchNotes,'ai_summary'=>$summary,'analysis_status'=>$progressive?'pending':'done','cache_key'=>$cacheKey];aih_write_json(AIH_REPORTS.'/'.$id.'.json',$report);
     $warning=count($rows)===0?'No indexed results were returned. DuckDuckGo HTML can be blocked by some hosts; add one or more SearXNG endpoints, Ollama Web Search or a Brave Search key for stronger coverage.':'';
-    $response=['ok'=>true,'report_id'=>$id,'results'=>$rows,'queries'=>$queries,'count'=>count($rows),'engines'=>array_values(array_unique($engines)),'research_notes'=>$researchNotes,'ai_summary'=>$summary,'cached'=>false,'warning'=>$warning];aih_write_json($cachePath,$response);return $response;
+    $response=['ok'=>true,'report_id'=>$id,'results'=>$rows,'queries'=>$queries,'count'=>count($rows),'engines'=>array_values(array_unique($engines)),'research_notes'=>$researchNotes,'ai_summary'=>$summary,'analysis_pending'=>$progressive,'cached'=>false,'warning'=>$warning];aih_write_json($cachePath,$response);return $response;
+}
+
+
+/** Called only after the initial fast search is returned to the browser. */
+function aih_analyze_search_report(string $reportId): array {
+    if(!preg_match('/^report_[A-Za-z0-9_-]{10,80}$/D',$reportId))return ['ok'=>false,'error'=>'Invalid report ID'];
+    $path=AIH_REPORTS.'/'.$reportId.'.json';
+    $report=aih_read_json($path,[]);
+    if(!is_array($report)||($report['id']??'')!==$reportId)return ['ok'=>false,'error'=>'Search report not found'];
+    if(($report['analysis_status']??'')==='done')return ['ok'=>true,'results'=>$report['results']??[],'ai_summary'=>$report['ai_summary']??['text'=>'','provider'=>''],'cached'=>true];
+    $settings=aih_settings();$rows=is_array($report['results']??null)?$report['results']:[];
+    if(!empty($settings['search']['ai_enrich'])&&$rows)$rows=aih_ai_enrich_rows($rows);
+    $input=is_array($report['input']??null)?$report['input']:[];
+    $sectorNames=[];foreach(aih_selected_sectors($input) as $sec)$sectorNames[]=$sec==='ALL'?'all sectors':$sec;
+    $q=trim((string)($input['q']??'').' | sectors: '.implode(', ',$sectorNames));
+    $summary=aih_search_ai_summary($rows,$q,(string)($input['lang']??'en'));
+    // Use atomic update to preserve report metadata or browser fallback saved meanwhile.
+    $updated=aih_update_json($path,static function($current) use($rows,$summary){
+        if(!is_array($current))return [];
+        if(($current['analysis_status']??'')==='done')return $current;
+        $current['results']=$rows;
+        if(!empty($summary['text'])||empty($current['ai_summary']['text']))$current['ai_summary']=$summary;
+        $current['analysis_status']='done';
+        return $current;
+    });
+    // Refresh the ten-minute search response cache so repeat searches get the
+    // enriched rows and summary immediately, with no second AI roundtrip.
+    $key=(string)($report['cache_key']??'');
+    if(preg_match('/^[a-f0-9]{40}$/D',$key)){
+        $cachePath=AIH_CACHE.'/search_'.$key.'.json';
+        if(is_file($cachePath))aih_update_json($cachePath,static function($cached) use($reportId,$updated){
+            if(!is_array($cached)||($cached['report_id']??'')!==$reportId)return $cached;
+            $cached['results']=$updated['results']??[];
+            $cached['ai_summary']=$updated['ai_summary']??['text'=>'','provider'=>''];
+            $cached['analysis_pending']=false;
+            return $cached;
+        });
+    }
+    return ['ok'=>true,'results'=>$updated['results']??$rows,'ai_summary'=>$updated['ai_summary']??$summary,'cached'=>false];
 }

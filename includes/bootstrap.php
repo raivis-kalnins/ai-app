@@ -1,7 +1,11 @@
 <?php
 declare(strict_types=1);
 
-const AIH_VERSION = '0.6.8';
+const AIH_VERSION = '0.7.3';
+// PRIVATE ai.63.lv release: site-specific bcrypt seed (not a plaintext password).
+// Seed is used only when a saved owner password is missing or unusable.
+// Keep this personalized package out of public Git repositories.
+const AIH_PRIVATE_OWNER_HASH = '$2y$12$vd1YtbKX1UVCxMBmzNeG3u5G5SpIXoEi/.x6VUyGOXbpcveRcwMga';
 const AIH_ROOT = __DIR__ . '/..';
 const AIH_STORAGE = AIH_ROOT . '/storage';
 const AIH_UPLOADS = AIH_STORAGE . '/uploads';
@@ -10,6 +14,8 @@ const AIH_REPORTS = AIH_STORAGE . '/reports';
 const AIH_CACHE = AIH_STORAGE . '/cache';
 const AIH_LOGS = AIH_STORAGE . '/logs';
 const AIH_CHATS = AIH_STORAGE . '/chats';
+
+require_once __DIR__ . '/auth.php';
 
 function aih_config(): array {
     static $cfg = null;
@@ -33,8 +39,12 @@ function aih_path(string $bucket, string $name=''): string {
 
 function aih_default_settings(): array {
     $cfg = aih_config();
+    // No manual activation file: private installation hash is included in this
+    // one-site ZIP. Saved valid owner passwords always win during migration.
+    $initialHash = aih_password_hash_usable(AIH_PRIVATE_OWNER_HASH)
+        ? AIH_PRIVATE_OWNER_HASH : (string)($cfg['security']['initial_password_hash'] ?? '');
     return [
-        'password_hash' => (string)($cfg['security']['initial_password_hash'] ?? ''),
+        'password_hash' => aih_password_hash_usable($initialHash) ? $initialHash : '',
         'providers' => [
             'order' => [
                 'ollama_local','lmstudio_local','llamacpp_local','localai_local','aihorde_text',
@@ -164,11 +174,35 @@ function aih_read_json(string $path, mixed $default=[]): mixed {
 }
 
 function aih_write_json(string $path, mixed $value): void {
-    $dir = dirname($path); if (!is_dir($dir)) @mkdir($dir,0770,true);
-    $tmp = $path . '.tmp.' . bin2hex(random_bytes(4));
-    file_put_contents($tmp, json_encode($value, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).PHP_EOL, LOCK_EX);
-    @chmod($tmp,0660);
-    rename($tmp,$path);
+    $dir = dirname($path);
+    if (!is_dir($dir) && !@mkdir($dir, 0770, true) && !is_dir($dir)) {
+        throw new RuntimeException('Cannot create private storage directory.');
+    }
+    $data = json_encode($value, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR) . PHP_EOL;
+    $tmp = $path . '.tmp.' . bin2hex(random_bytes(8));
+    // Set a restrictive mode at creation, not only after the write completes.
+    $oldMask = umask(0077);
+    try { $handle = @fopen($tmp, 'xb'); } finally { umask($oldMask); }
+    if (!$handle) throw new RuntimeException('Cannot create private storage file.');
+    try {
+        if (!flock($handle, LOCK_EX)) throw new RuntimeException('Storage lock failed.');
+        $offset = 0;
+        while ($offset < strlen($data)) {
+            $n = fwrite($handle, substr($data, $offset));
+            if ($n === false || $n === 0) throw new RuntimeException('Storage write failed.');
+            $offset += $n;
+        }
+        if (!fflush($handle)) throw new RuntimeException('Storage flush failed.');
+        flock($handle, LOCK_UN);
+        fclose($handle);
+        $handle = null;
+        // Keep compatibility with deployments sharing files via a private group.
+        @chmod($tmp, 0660);
+        if (!@rename($tmp, $path)) throw new RuntimeException('Storage replacement failed.');
+    } finally {
+        if (is_resource($handle)) fclose($handle);
+        if (is_file($tmp)) @unlink($tmp);
+    }
 }
 
 function aih_array_is_list_compat(array $v): bool { if($v===[])return true; return array_keys($v)===range(0,count($v)-1); }
@@ -186,6 +220,13 @@ function aih_merge_missing(array $defaults, array $current): array {
 function aih_migrate_settings(array $current): array {
     $defaults = aih_default_settings();
     $merged = aih_merge_missing($defaults,$current);
+    // v0.7.3: a key-only marker inside storage was easily omitted during cPanel
+    // uploads. Repair a missing/retired saved password directly from the
+    // personalized package; DO NOT replace an existing usable owner password.
+    if (!aih_password_hash_usable((string)($merged['password_hash'] ?? ''))
+        && aih_password_hash_usable((string)$defaults['password_hash'])) {
+        $merged['password_hash'] = $defaults['password_hash'];
+    }
     $known = $defaults['providers']['order'];
     $oldOrder = is_array($current['providers']['order'] ?? null) ? $current['providers']['order'] : [];
     // v0.6.0: add AI Horde Text near the local providers on installs still using the previous default order.
@@ -238,28 +279,85 @@ function aih_migrate_settings(array $current): array {
     return $merged;
 }
 
+/**
+ * Site-specific cPanel recovery: an owner-uploaded, protected, one-time file
+ * can supply a bcrypt/Argon hash on installations without a usable login.
+ * The private marker is NEVER read from a request, shipped in public releases,
+ * or allowed to replace an already configured unique password.
+ */
+function aih_activate_private_login_once(): void {
+    $marker = AIH_STORAGE . '/.owner-login-once';
+    if (!is_file($marker) || is_link($marker)) return;
+    $size = @filesize($marker);
+    if ($size === false || $size < 50 || $size > 200) return;
+    $hash = trim((string)@file_get_contents($marker));
+    if (!aih_password_hash_usable($hash)) return;
+
+    $activated = false;
+    aih_update_json(AIH_STORAGE . '/settings.json', static function ($settings) use ($hash, &$activated): array {
+        if (!is_array($settings) || $settings === []) {
+            throw new RuntimeException('Cannot activate owner login: settings invalid.');
+        }
+        // Do not reset a valid existing password, including custom deployments.
+        if (!aih_password_hash_usable((string)($settings['password_hash'] ?? ''))) {
+            $settings['password_hash'] = $hash;
+            $activated = true;
+        }
+        return $settings;
+    }, []);
+
+    // Consume the marker even if an existing unique owner password was found.
+    // A failed unlink is handled by blanking it so future requests cannot reuse it.
+    if (!@unlink($marker)) {
+        @file_put_contents($marker, '', LOCK_EX);
+        error_log('AIH: please remove the owner login activation marker in cPanel.');
+    }
+    if ($activated) {
+        // Old browser sessions fail their password fingerprint checks automatically.
+        // Clear remaining remember tokens and previous failed-login counters.
+        try {
+            aih_update_json(AIH_STORAGE . '/remember_tokens.json', static fn() => [], []);
+            aih_update_json(AIH_STORAGE . '/auth_attempts.json', static fn() => [], []);
+        } catch (Throwable $e) {
+            error_log('AIH: owner login activated, optional session cleanup failed.');
+        }
+    }
+}
+
 function aih_bootstrap_storage(): void {
     foreach ([AIH_STORAGE,AIH_UPLOADS,AIH_GENERATED,AIH_REPORTS,AIH_CACHE,AIH_LOGS,AIH_CHATS] as $d) {
         if (!is_dir($d)) @mkdir($d, 0770, true);
     }
-    $deny = "Require all denied\nDeny from all\n";
+    $deny = "Require all denied\n";
     if (!is_file(AIH_STORAGE.'/.htaccess')) @file_put_contents(AIH_STORAGE.'/.htaccess', $deny);
     $settingsPath=AIH_STORAGE.'/settings.json';
+    $passwordRepaired = false;
     if (!is_file($settingsPath)) {
         aih_write_json($settingsPath, aih_default_settings());
     } else {
         $before=aih_read_json($settingsPath,[]);
         $after=aih_migrate_settings(is_array($before)?$before:[]);
+        $passwordRepaired = !aih_password_hash_usable((string)($before['password_hash'] ?? ''))
+            && aih_password_hash_usable((string)($after['password_hash'] ?? ''));
         if ($after !== $before) aih_write_json($settingsPath,$after);
     }
     if (!is_file(AIH_STORAGE.'/provider_state.json')) aih_write_json(AIH_STORAGE.'/provider_state.json', []);
+    // Existing legacy 0.7.2 marker is discarded without replacing a valid hash.
+    aih_activate_private_login_once();
+    if ($passwordRepaired) {
+        // Rate-limit failures incurred while login was locked should not block
+        // the first successful sign-in. Old remember tokens are invalidated.
+        foreach (['auth_attempts.json','remember_tokens.json'] as $name) {
+            if (is_file(AIH_STORAGE . '/' . $name)) aih_write_json(AIH_STORAGE . '/' . $name, []);
+        }
+    }
 }
 
 function aih_update_json(string $path, callable $fn, mixed $default=[]): mixed {
     $lock = @fopen($path.'.lock','c+');
     if (!$lock) throw new RuntimeException('Storage lock failed');
     try {
-        flock($lock,LOCK_EX);
+        if (!flock($lock,LOCK_EX)) throw new RuntimeException('Storage lock failed');
         $v = $fn(aih_read_json($path,$default));
         aih_write_json($path,$v);
         flock($lock,LOCK_UN);
@@ -277,6 +375,9 @@ function aih_start_session(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
     $cfg = aih_config();
     $secure = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https');
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_trans_sid', '0');
     session_name((string)($cfg['app']['session_name'] ?? 'free_ai_hub_session'));
     session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>'Strict']);
     session_start();
@@ -295,7 +396,14 @@ function aih_headers(bool $html=true): void {
 }
 
 function aih_e(?string $s): string { return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE, 'UTF-8'); }
-function aih_is_logged_in(): bool { return !empty($_SESSION['auth_ok']); }
+function aih_is_logged_in(): bool {
+    if (empty($_SESSION['auth_ok'])) return false;
+    $hash = (string)(aih_settings()['password_hash'] ?? '');
+    $valid = aih_password_hash_usable($hash)
+        && hash_equals(hash('sha256', $hash), (string)($_SESSION['auth_password_fp'] ?? ''));
+    if (!$valid) unset($_SESSION['auth_ok'], $_SESSION['auth_password_fp']);
+    return $valid;
+}
 function aih_require_login(): void { if (!aih_is_logged_in()) { http_response_code(401); exit('Unauthorized'); } }
 
 function aih_secure_request(): bool {
@@ -321,6 +429,7 @@ function aih_remember_forget(): void {
     aih_remember_expire_cookie();
 }
 function aih_remember_issue(string $passwordHash,int $days=30): void {
+    if (!aih_password_hash_usable($passwordHash)) throw new RuntimeException('Login is not configured.');
     $selector=bin2hex(random_bytes(9));
     $validator=rtrim(strtr(base64_encode(random_bytes(32)),'+/','-_'),'=');
     $expires=time()+max(1,$days)*86400;
@@ -349,14 +458,14 @@ function aih_remember_try_login(array $settings): bool {
     $rows=aih_read_json(aih_remember_path(),[]);if(!is_array($rows))$rows=[];$record=null;
     foreach($rows as$r){if(is_array($r)&&hash_equals((string)($r['selector']??''),$selector)){$record=$r;break;}}
     $passwordHash=(string)($settings['password_hash']??'');
-    $valid=is_array($record)
+    $valid=aih_password_hash_usable($passwordHash) && is_array($record)
         && (int)($record['expires_at']??0)>time()
         && hash_equals((string)($record['validator_hash']??''),hash('sha256',$validator))
         && hash_equals((string)($record['password_fp']??''),hash('sha256',$passwordHash));
     if(!$valid){aih_remember_forget();return false;}
     // Rotate the persistent token after every automatic login to reduce replay risk.
     aih_remember_forget();
-    session_regenerate_id(true);$_SESSION['auth_ok']=true;$_SESSION['csrf']=bin2hex(random_bytes(32));
+    aih_auth_mark_logged_in($passwordHash);
     aih_remember_issue($passwordHash,30);aih_audit('remember_login_ok');
     return true;
 }

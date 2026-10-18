@@ -10,8 +10,8 @@ return [
         'cache_retention_seconds' => 86400,   // 24 hours
     ],
     'security' => [
-        // bcrypt hash for the initial password requested by the owner.
-        // Change it from Settings after first login.
-        'initial_password_hash' => '$2y$12$aPwgyzVoajFvqaKfSnm2IO6bUedvb9.kCNtVT/UQYzu1GmMBsGW3e',
+        // No shared login is shipped. Set it with: php tools/set-password.php
+        // An optional server-only AIH_INITIAL_PASSWORD_HASH seeds a NEW install.
+        'initial_password_hash' => getenv('AIH_INITIAL_PASSWORD_HASH') ?: '',
     ],
 ];
