@@ -244,17 +244,97 @@ if(page==='search'){
   const renderField=(sec,f)=>{const wrap=document.createElement('div'),lab=document.createElement('label');lab.textContent=f.label||String(f.name||'').replaceAll('_',' ');let el;if(f.type==='select'){el=document.createElement('select');const empty=document.createElement('option');empty.value='';empty.textContent='—';el.appendChild(empty);for(const v of (f.options||[])){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}}else{el=document.createElement('input');el.type=f.type==='number'?'number':(f.type==='date'?'date':'text');if(f.type==='number')el.step='any';el.placeholder=f.placeholder||''}el.dataset.sectorFilter=sec;el.dataset.filterName=f.name;wrap.append(lab,el);return wrap};
   function renderFilters(){if(!filterHost)return;filterHost.innerHTML='';let secs=[...sector.selectedOptions].map(o=>o.value);if(!secs.length)secs=['ALL'];if(secs.includes('ALL'))secs=['ALL'];for(const sec of secs){const fields=filterSchema[sec]||filterSchema.ALL||[];const group=document.createElement('section');group.className='sector-filter-group';const h=document.createElement('h4');h.textContent=sec==='ALL'?t('all_sectors'):sectorLabel(sec);const grid=document.createElement('div');grid.className='form-grid';fields.forEach(f=>grid.appendChild(renderField(sec,f)));group.append(h,grid);filterHost.appendChild(group)}}renderFilters();
   const detailsFor=r=>{const items=[];[['brand',r.brand||r.make],['model',r.model],['year',r.year],['mileage',r.mileage],['area',r.area],['location',r.location],['company',r.company],['salary',r.salary],['condition',r.condition]].forEach(([k,v])=>{if(v)items.push(String(v))});return items.join(' · ')};
-  qs('#searchForm')?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget),btn=e.currentTarget.querySelector('button[type="submit"]');let countries=f.getAll('countries'),sectors=f.getAll('sectors');if(!countries.length||countries.includes('ALL'))countries=['ALL'];if(!sectors.length||sectors.includes('ALL'))sectors=['ALL'];const sector_filters={};qsa('[data-sector-filter]',e.currentTarget).forEach(el=>{const v=String(el.value||'').trim();if(!v)return;const sec=el.dataset.sectorFilter||'ALL',name=el.dataset.filterName||'';if(!name)return;(sector_filters[sec]??={})[name]=v});const data={q:f.get('q')||'',countries,sectors,sector_filters,lang};setBtn(btn,true,'⌕ '+t('searching'));
-    try{const j=await api('search',data),out=qs('#searchOutput'),body=qs('#searchRows');out?.classList.remove('hidden');const engines=(j.engines||[]).join(', '),sectorText=sectors.includes('ALL')?t('all_sectors'):sectors.map(sectorLabel).join(', ');qs('#searchSummary').textContent=(j.count||0)+' '+t('results').toLowerCase()+' · '+sectorText+' · '+(j.queries?.length||0)+' queries'+(engines?' · '+engines:'')+(j.cached?' · cache':'')+(j.warning?' · '+j.warning:'');body.innerHTML='';
-      (j.results||[]).forEach((r,i)=>{const tr=document.createElement('tr'),href=safeUrl(r.url),detail=detailsFor(r),sectorName=sectorLabel(r.sector||'ALL');tr.innerHTML='<td>'+(i+1)+'</td><td><strong>'+esc(r.title||'')+'</strong><br><small>'+esc(r.snippet||'')+'</small></td><td>'+esc(((r.price||'')+' '+(r.currency||'')).trim())+'</td><td><small>'+esc(detail)+'</small></td><td>'+esc(r.country||'')+'</td><td>'+esc(sectorName)+'</td><td>'+(href==='#'?'':('<a href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'+esc(t('source'))+' ↗</a>'))+'</td>';body.appendChild(tr)});
-      const ai=qs('#aiSearchSummary'),notes=(j.research_notes||[]);let summaryText=j.ai_summary?.text||'',summaryProvider=j.ai_summary?.provider||'';
-      if(!summaryText&&(j.results||[]).length){const src=(j.results||[]).slice(0,24).map((r,i)=>({i:i+1,title:r.title,snippet:r.snippet,url:r.url,country:r.country,sector:r.sector,price:r.price,currency:r.currency,year:r.year,mileage:r.mileage,area:r.area,location:r.location,company:r.company,salary:r.salary}));const prompt='Summarize and compare ONLY these sourced search results. Do not invent facts. Mention uncertainty and useful differences. Reply in language code '+lang+'.\nQuery: '+String(data.q||'')+'\nSectors: '+JSON.stringify(data.sectors)+'\nStructured filters: '+JSON.stringify(data.sector_filters)+'\nSources: '+JSON.stringify(src);
-        if(document.body.dataset.webllmEnabled==='1'&&window.AIHWebLLM){try{if(!window.AIHWebLLM.isLoaded?.())await window.AIHWebLLM.load();summaryText=String(await window.AIHWebLLM.chat([{role:'user',content:prompt}])||'').trim();summaryProvider='Browser AI / WebLLM'}catch(_){}}
-        if(!summaryText&&document.body.dataset.puterEnabled==='1'&&window.AIHPuterRouter){try{const st=await window.AIHPuterRouter.allowanceStatus?.();if(!st||st.ok!==false){const pr=await window.AIHPuterRouter.chat([{role:'user',content:prompt}],{task:'research',model:document.body.dataset.puterModel||'auto'});summaryText=String(pr?.text||'').trim();summaryProvider=pr?.model?'Puter AI · '+pr.model:'Puter AI'}}catch(_){}}
-        if(summaryText)api('report_client_summary',{report_id:j.report_id,text:summaryText,provider:summaryProvider}).catch(()=>{}); }
-      const blocks=[];if(summaryText)blocks.push('<div><b>AI summary'+(summaryProvider?' · '+esc(summaryProvider):'')+'</b><p>'+esc(summaryText)+'</p></div>');notes.forEach(n=>{if(n?.text)blocks.push('<div class="research-note"><b>'+esc(n.provider||'AI research')+'</b><p>'+esc(n.text)+'</p></div>')});if(blocks.length){ai.classList.remove('hidden');ai.innerHTML=blocks.join('')}else ai.classList.add('hidden');
-      qs('#reportLinks').innerHTML='<a class="button ghost" href="report.php?id='+encodeURIComponent(j.report_id)+'&format=html" target="_blank" rel="noopener">'+esc(t('report_html'))+'</a><a class="button ghost" href="report.php?id='+encodeURIComponent(j.report_id)+'&format=pdf">'+esc(t('report_pdf'))+'</a><a class="button ghost" href="report.php?id='+encodeURIComponent(j.report_id)+'&format=json">'+esc(t('report_json'))+'</a>';out?.scrollIntoView({behavior:'smooth',block:'start'});
-    }catch(err){alert((t('error')||'Error')+': '+err.message)}finally{setBtn(btn,false,t('search_compare'))}
+  // The user sees source-backed results as soon as web searches finish. Expensive AI
+  // normalization/summary follows asynchronously without blocking the result table.
+  const form=qs('#searchForm'),feedback=qs('#searchFeedback'),feedbackText=qs('#searchFeedbackText');
+  const resultFilter=qs('#searchResultFilter'),resultSort=qs('#searchResultSort');
+  const output=qs('#searchOutput'),tbody=qs('#searchRows'),ai=qs('#aiSearchSummary');
+  let activeSearch=0,activeRows=[];
+  const showFeedback=message=>{if(feedback)feedback.hidden=!message;if(feedbackText)feedbackText.textContent=message||''};
+  const priceNumber=value=>{
+    let raw=String(value||'').replace(/[^0-9,.-]/g,'');if(!raw)return null;
+    const comma=raw.lastIndexOf(','),dot=raw.lastIndexOf('.');
+    if(comma>=0&&dot>=0)raw=comma>dot?raw.replaceAll('.','').replace(',','.'):raw.replaceAll(',','');
+    else if(comma>=0)raw=/,\d{1,2}$/.test(raw)?raw.replace(',','.'):raw.replaceAll(',','');
+    else if(dot>=0&&/\.\d{3}$/.test(raw))raw=raw.replaceAll('.','');
+    const n=Number(raw);return Number.isFinite(n)?n:null;
+  };
+  const renderRows=rows=>{
+    activeRows=Array.isArray(rows)?rows:[];
+    const keyword=String(resultFilter?.value||'').trim().toLocaleLowerCase(),sort=resultSort?.value||'relevance';
+    const filtered=activeRows.filter(r=>!keyword||[r.title,r.snippet,r.price,r.currency,r.country,r.sector,detailsFor(r)].join(' ').toLocaleLowerCase().includes(keyword));
+    if(sort==='price_asc'||sort==='price_desc')filtered.sort((a,b)=>{
+      const x=priceNumber(a.price),y=priceNumber(b.price);
+      if(x===null)return y===null?0:1;if(y===null)return -1;
+      return sort==='price_asc'?x-y:y-x;
+    });
+    else if(sort==='title')filtered.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||''),lang));
+    const frag=document.createDocumentFragment();
+    filtered.forEach((r,i)=>{
+      const tr=document.createElement('tr'),href=safeUrl(r.url),detail=detailsFor(r),sectorName=sectorLabel(r.sector||'ALL');
+      tr.innerHTML='<td>'+(i+1)+'</td><td><strong>'+esc(r.title||'')+'</strong><br><small>'+esc(r.snippet||'')+'</small></td><td>'+esc(((r.price||'')+' '+(r.currency||'')).trim())+'</td><td><small>'+esc(detail)+'</small></td><td>'+esc(r.country||'')+'</td><td>'+esc(sectorName)+'</td><td>'+(href==='#'?'':'<a href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'+esc(t('source'))+' ↗</a>')+'</td>';
+      frag.appendChild(tr);
+    });
+    if(!filtered.length){const tr=document.createElement('tr');tr.innerHTML='<td colspan="7" class="empty">'+esc(t('no_results'))+'</td>';frag.appendChild(tr)}
+    tbody?.replaceChildren(frag);
+  };
+  resultFilter?.addEventListener('input',()=>renderRows(activeRows));
+  resultSort?.addEventListener('change',()=>renderRows(activeRows));
+  const displaySummary=(text,provider,notes=[])=>{
+    const blocks=[];
+    if(text)blocks.push('<div><b>AI summary'+(provider?' · '+esc(provider):'')+'</b><p>'+esc(text)+'</p></div>');
+    notes.forEach(n=>{if(n?.text)blocks.push('<div class="research-note"><b>'+esc(n.provider||'AI research')+'</b><p>'+esc(n.text)+'</p></div>')});
+    if(blocks.length){ai?.classList.remove('hidden');if(ai)ai.innerHTML=blocks.join('')}
+    else{ai?.classList.add('hidden');if(ai)ai.textContent=''}
+  };
+  const finishAnalysis=async(j,data,searchId)=>{
+    let result=j;
+    try {
+      const analysis=await api('search_analyze',{report_id:j.report_id});
+      if(searchId!==activeSearch)return;
+      result={...j,...analysis};
+      if(Array.isArray(analysis.results))renderRows(analysis.results);
+      let text=String(result.ai_summary?.text||'').trim(),provider=String(result.ai_summary?.provider||'');
+      if(!text&&(result.results||[]).length){
+        const sources=(result.results||[]).slice(0,24).map((r,i)=>({i:i+1,title:r.title,snippet:r.snippet,url:r.url,country:r.country,sector:r.sector,price:r.price,currency:r.currency,year:r.year,mileage:r.mileage,area:r.area,location:r.location,company:r.company,salary:r.salary}));
+        const prompt='Summarize and compare ONLY these sourced search results. Do not invent facts. Mention uncertainty and useful differences. Reply in language code '+lang+'.\nQuery: '+String(data.q||'')+'\nSectors: '+JSON.stringify(data.sectors)+'\nStructured filters: '+JSON.stringify(data.sector_filters)+'\nSources: '+JSON.stringify(sources);
+        // Do not auto-download a large browser AI model just to summarize search results.
+        if(window.AIHWebLLM?.isLoaded?.()){
+          try{text=String(await window.AIHWebLLM.chat([{role:'user',content:prompt}])||'').trim();provider='Browser AI / WebLLM'}catch(_){}
+        }
+        if(!text&&document.body.dataset.puterEnabled==='1'&&window.AIHPuterRouter){
+          try{const status=await window.AIHPuterRouter.allowanceStatus?.();if(!status||status.ok!==false){const response=await window.AIHPuterRouter.chat([{role:'user',content:prompt}],{task:'research',model:document.body.dataset.puterModel||'auto'});text=String(response?.text||'').trim();provider=response?.model?'Puter AI · '+response.model:'Puter AI'}}catch(_){}
+        }
+        if(text)api('report_client_summary',{report_id:j.report_id,text,provider}).catch(()=>{});
+      }
+      if(searchId===activeSearch)displaySummary(text,provider,j.research_notes||[]);
+    } catch(err){if(searchId===activeSearch)displaySummary(String(j.ai_summary?.text||''),String(j.ai_summary?.provider||''),j.research_notes||[])}
+    finally{if(searchId===activeSearch)showFeedback('')}
+  };
+  form?.addEventListener('submit',async e=>{
+    e.preventDefault();const searchId=++activeSearch,f=new FormData(form),btn=form.querySelector('button[type="submit"]');
+    let countries=f.getAll('countries'),sectors=f.getAll('sectors');
+    if(!countries.length||countries.includes('ALL'))countries=['ALL'];
+    if(!sectors.length||sectors.includes('ALL'))sectors=['ALL'];
+    const sector_filters={};qsa('[data-sector-filter]',form).forEach(el=>{const value=String(el.value||'').trim();if(!value)return;const code=el.dataset.sectorFilter||'ALL',name=el.dataset.filterName||'';if(name)(sector_filters[code]??={})[name]=value});
+    const data={q:String(f.get('q')||'').trim(),countries,sectors,sector_filters,lang,fast:true};
+    if(!data.q&&!Object.keys(sector_filters).length)return;
+    if(resultFilter)resultFilter.value='';
+    if(resultSort)resultSort.value='relevance';
+    showFeedback(t('searching')+'…');setBtn(btn,true,t('searching'));
+    try {
+      const j=await api('search',data);
+      if(searchId!==activeSearch)return;
+      output?.classList.remove('hidden');renderRows(j.results||[]);
+      const engines=(j.engines||[]).join(', '),sectorText=sectors.includes('ALL')?t('all_sectors'):sectors.map(sectorLabel).join(', ');
+      const summary=qs('#searchSummary');if(summary)summary.textContent=(j.count||0)+' '+t('results').toLowerCase()+' · '+sectorText+' · '+(j.queries?.length||0)+' queries'+(engines?' · '+engines:'')+(j.cached?' · cache':'')+(j.warning?' · '+j.warning:'');
+      displaySummary(String(j.ai_summary?.text||''),String(j.ai_summary?.provider||''),j.research_notes||[]);
+      const links=qs('#reportLinks');if(links)links.innerHTML='<a class="button ghost" href="report.php?id='+encodeURIComponent(j.report_id)+'&format=html" target="_blank" rel="noopener">'+esc(t('report_html'))+'</a><a class="button ghost" href="report.php?id='+encodeURIComponent(j.report_id)+'&format=pdf">'+esc(t('report_pdf'))+'</a><a class="button ghost" href="report.php?id='+encodeURIComponent(j.report_id)+'&format=json">'+esc(t('report_json'))+'</a>';
+      output?.scrollIntoView({behavior:'smooth',block:'start'});
+      if(j.analysis_pending){showFeedback(t('comparing_ais')+'…');void finishAnalysis(j,data,searchId)}
+      else showFeedback('');
+    }catch(err){if(searchId===activeSearch){showFeedback('');alert((t('error')||'Error')+': '+err.message)}}
+    finally{setBtn(btn,false,t('search_compare'))}
   });
 }
 if(page==='images'){
@@ -324,6 +404,6 @@ if(page==='settings'){
   qs('#figmaConnectBtn')?.addEventListener('click',async e=>{const b=e.currentTarget,f=new FormData(form);b.disabled=true;if(figmaStatus)figmaStatus.textContent='Preparing Figma OAuth…';try{const j=await api('figma_prepare',{figma_client_id:f.get('figma_client_id')||'',figma_client_secret:f.get('figma_client_secret')||'',figma_redirect_uri:f.get('figma_redirect_uri')||'',figma_scopes:f.get('figma_scopes')||''});location.href=j.authorize_url}catch(err){if(figmaStatus)figmaStatus.textContent=(t('error')||'Error')+': '+err.message;b.disabled=false}});
   qs('#figmaTestBtn')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;if(figmaStatus)figmaStatus.textContent=t('testing')+'…';try{const j=await api('figma_test',{});const u=j.user||{};if(figmaStatus)figmaStatus.textContent=(t('connected')||'Connected')+': '+(u.handle||'Figma')+(u.email?' · '+u.email:'')}catch(err){if(figmaStatus)figmaStatus.textContent=(t('error')||'Error')+': '+err.message}finally{b.disabled=false}});
   qs('#figmaDisconnectBtn')?.addEventListener('click',async e=>{if(!confirm('Disconnect Figma?'))return;const b=e.currentTarget;b.disabled=true;try{await api('figma_disconnect',{});if(figmaStatus)figmaStatus.textContent='Figma disconnected';setTimeout(()=>location.reload(),400)}catch(err){if(figmaStatus)figmaStatus.textContent=(t('error')||'Error')+': '+err.message;b.disabled=false}});
-  form?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(form),data={};qsa('.setting-row',form).forEach(row=>{const id=row.dataset.provider;data['enabled_'+id]=!!form.querySelector('[name="enabled_'+CSS.escape(id)+'"]')?.checked;data['model_'+id]=form.querySelector('[name="model_'+CSS.escape(id)+'"]')?.value||'';const key=form.querySelector('[name="key_'+CSS.escape(id)+'"]');if(key&&!key.disabled)data['key_'+id]=key.value||''});data.provider_order=String(f.get('provider_order')||'').split(',').map(x=>x.trim()).filter(Boolean);['ollama_local_url','lmstudio_local_url','llamacpp_local_url','localai_local_url','cloudflare_account_id','custom_openai_url','searxng_url','ollama_web_key','brave_search_key','image_provider','media_provider_order','puter_video_model','pollinations_model','sdwebui_url','comfyui_url','comfyui_checkpoint','comfyui_width','comfyui_height','cloudflare_image_model','alibaba_workspace_id','alibaba_region','alibaba_image_model','alibaba_api_key','huggingface_image_model','siliconflow_image_model','siliconflow_api_key','aihorde_model','aihorde_timeout','aihorde_steps','image_speed_mode','aihorde_queue_limit','aihorde_api_key','unsplash_access_key','pexels_api_key','pixabay_api_key','system_prompt','ui_language','ui_theme','hcaptcha_sitekey','hcaptcha_secret','new_password','figma_client_id','figma_client_secret','figma_redirect_uri','figma_scopes','figma_team_id'].forEach(k=>data[k]=f.get(k)||'');data.ai_enrich=f.get('ai_enrich')==='on';data.smart_grounding=f.get('smart_grounding')==='on';data.developer_grounding=f.get('developer_grounding')==='on';data.research_sources=f.get('research_sources')==='on';data.hcaptcha_enabled=f.get('hcaptcha_enabled')==='on';const btn=form.querySelector('button[type="submit"]');setBtn(btn,true,t('saving'));status.textContent=t('saving')+'…';try{await api('settings',data);status.textContent=t('saved');if(data.ui_language)cookie('aih_lang',data.ui_language);if(data.ui_theme){cookie('aih_theme',data.ui_theme);document.documentElement.dataset.theme=data.ui_theme}}catch(err){status.textContent=t('error')+': '+err.message}finally{setBtn(btn,false,t('save_settings'))}});
+  form?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(form),data={};qsa('.setting-row',form).forEach(row=>{const id=row.dataset.provider;data['enabled_'+id]=!!form.querySelector('[name="enabled_'+CSS.escape(id)+'"]')?.checked;data['model_'+id]=form.querySelector('[name="model_'+CSS.escape(id)+'"]')?.value||'';const key=form.querySelector('[name="key_'+CSS.escape(id)+'"]');if(key&&!key.disabled)data['key_'+id]=key.value||''});data.provider_order=String(f.get('provider_order')||'').split(',').map(x=>x.trim()).filter(Boolean);['ollama_local_url','lmstudio_local_url','llamacpp_local_url','localai_local_url','cloudflare_account_id','custom_openai_url','searxng_url','ollama_web_key','brave_search_key','image_provider','media_provider_order','puter_video_model','pollinations_model','sdwebui_url','comfyui_url','comfyui_checkpoint','comfyui_width','comfyui_height','cloudflare_image_model','alibaba_workspace_id','alibaba_region','alibaba_image_model','alibaba_api_key','huggingface_image_model','siliconflow_image_model','siliconflow_api_key','aihorde_model','aihorde_timeout','aihorde_steps','image_speed_mode','aihorde_queue_limit','aihorde_api_key','unsplash_access_key','pexels_api_key','pixabay_api_key','system_prompt','ui_language','ui_theme','hcaptcha_sitekey','hcaptcha_secret','current_password','new_password','confirm_password','figma_client_id','figma_client_secret','figma_redirect_uri','figma_scopes','figma_team_id'].forEach(k=>data[k]=f.get(k)||'');data.ai_enrich=f.get('ai_enrich')==='on';data.smart_grounding=f.get('smart_grounding')==='on';data.developer_grounding=f.get('developer_grounding')==='on';data.research_sources=f.get('research_sources')==='on';data.hcaptcha_enabled=f.get('hcaptcha_enabled')==='on';const btn=form.querySelector('button[type="submit"]');setBtn(btn,true,t('saving'));status.textContent=t('saving')+'…';try{const result=await api('settings',data);if(result.password_changed){['current_password','new_password','confirm_password'].forEach(k=>{const field=form.elements.namedItem(k);if(field)field.value=''})}status.textContent=t('saved');if(data.ui_language)cookie('aih_lang',data.ui_language);if(data.ui_theme){cookie('aih_theme',data.ui_theme);document.documentElement.dataset.theme=data.ui_theme}}catch(err){status.textContent=t('error')+': '+err.message}finally{setBtn(btn,false,t('save_settings'))}});
 }
 })();
