@@ -257,3 +257,7 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(
  .setup-card{padding:24px 18px}
  .setup-card h1{font-size:22px}
 }
+
+/* Image builder refinements: compact controls, readable overlays and progressive results. */
+.image-composer-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px}.image-composer-controls select{flex:1 1 170px;min-width:145px;max-width:240px}.image-composer-controls input{flex:2 1 260px;min-width:200px}.image-composer-controls .button{flex:0 1 auto;white-space:normal}.web-image-card[hidden]{display:none!important}.web-image-show-more{display:block;margin:12px auto 4px;min-width:150px}
+@media(max-width:700px){.image-composer-controls select,.image-composer-controls input,.image-composer-controls .button{flex:1 1 calc(50% - 9px);min-width:0;max-width:none}.image-composer-controls input{flex-basis:100%}}
