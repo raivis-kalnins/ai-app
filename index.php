@@ -90,7 +90,7 @@ $loadPuter=!empty($settings['providers']['enabled']['puter'])&&in_array($page,['
   </nav>
   <div class="sidebar-section-label"><?=aih_e(aih_t('more',$lang))?></div>
   <nav class="secondary-nav">
-    <?=nav('images',aih_t('media',$lang),'◫',$page)?>
+    <?=nav('images',$lang==='lv'?'Attēlu veidotājs':($lang==='ru'?'Конструктор изображений':'Image Builder'),'◫',$page)?>
     <?=nav('generators',aih_t('builder',$lang),'⌘',$page)?>
     <?=nav('home',aih_t('dashboard',$lang),'⌂',$page)?>
     <?=nav('settings',aih_t('settings',$lang),'⚙',$page)?>
