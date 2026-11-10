@@ -1,10 +1,15 @@
 <?php
 declare(strict_types=1);
-require __DIR__.'/includes/bootstrap.php';require __DIR__.'/includes/http.php';require __DIR__.'/includes/figma.php';require __DIR__.'/includes/providers.php';require __DIR__.'/includes/images.php';require __DIR__.'/includes/search.php';require __DIR__.'/includes/generators.php';require __DIR__.'/includes/plugins.php';require __DIR__.'/includes/i18n.php';
+require __DIR__.'/includes/bootstrap.php';require __DIR__.'/includes/http.php';require __DIR__.'/includes/figma.php';require __DIR__.'/includes/providers.php';require __DIR__.'/includes/images.php';require __DIR__.'/includes/search.php';require __DIR__.'/includes/generators.php';require __DIR__.'/includes/plugins.php';require __DIR__.'/includes/i18n.php';require __DIR__.'/includes/imagebuilder.php';
 aih_headers(false);aih_require_login();
 $action=(string)($_GET['action']??$_POST['action']??'');
 if($_SERVER['REQUEST_METHOD']==='POST')aih_check_csrf($_SERVER['HTTP_X_CSRF_TOKEN']??$_POST['csrf']??null);
 try {
+ // ---- Image Builder ----
+ if($action==='ib_generate'){if(session_status()===PHP_SESSION_ACTIVE)session_write_close();aih_json(ib_generate($_POST));}
+ if($action==='ib_status'){if(session_status()===PHP_SESSION_ACTIVE)session_write_close();aih_json(ib_horde_status((string)($_POST['job']??'')));}
+ if($action==='ib_file'){ib_serve((string)($_GET['f']??''));}
+ // ---- /Image Builder ----
  if($action==='providers'){aih_json(['ok'=>true,'providers'=>aih_provider_public_status(),'model_presets'=>aih_model_presets()]);}
  if($action==='chat_history'){ $in=$_SERVER['REQUEST_METHOD']==='POST'?aih_json_input():$_GET;$chatId=aih_chat_id((string)($in['chat_id']??''));aih_json(['ok'=>true,'chat_id'=>$chatId,'messages'=>aih_chat_history_load($chatId!==''?$chatId:null),'retention_days'=>30]);}
  if($action==='chat_threads'){aih_json(['ok'=>true,'threads'=>aih_chat_thread_list(30),'retention_days'=>30]);}

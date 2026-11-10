@@ -1,1 +1,37 @@
-[]
+{
+    "ollama_local": {
+        "last_error": "connection_failed Failed to connect to 127.0.0.1:11434 after 0 ms: Could not connect to server",
+        "cooldown_until": 1793480560
+    },
+    "lmstudio_local": {
+        "last_error": "connection_failed Failed to connect to 127.0.0.1:1234 after 0 ms: Could not connect to server",
+        "cooldown_until": 1793480560
+    },
+    "llamacpp_local": {
+        "last_error": "connection_failed Failed to connect to 127.0.0.1:8080 after 0 ms: Could not connect to server",
+        "cooldown_until": 1793480560
+    },
+    "localai_local": {
+        "last_error": "connection_failed Failed to connect to 127.0.0.1:8080 after 0 ms: Could not connect to server",
+        "cooldown_until": 1793480560
+    },
+    "aihorde_text": {
+        "last_ok": 1793480371,
+        "last_error": "",
+        "cooldown_until": 0
+    },
+    "image_sdwebui": {
+        "last_error": "HTTP 0 Failed to connect to 127.0.0.1:7860 after 0 ms: Could not connect to server",
+        "cooldown_until": 1794312725
+    },
+    "image_free_web": {
+        "last_ok": 1794312462,
+        "last_error": "",
+        "cooldown_until": 0
+    },
+    "image_aihorde": {
+        "last_ok": 1791885757,
+        "last_error": "",
+        "cooldown_until": 0
+    }
+}

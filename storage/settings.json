@@ -1,5 +1,5 @@
 {
-    "password_hash": "$2y$12$aPwgyzVoajFvqaKfSnm2IO6bUedvb9.kCNtVT/UQYzu1GmMBsGW3e",
+    "password_hash": "$2y$12$vd1YtbKX1UVCxMBmzNeG3u5G5SpIXoEi/.x6VUyGOXbpcveRcwMga",
     "providers": {
         "order": [
             "ollama_local",
@@ -24,22 +24,22 @@
         "enabled": {
             "puter": true,
             "ollama_local": true,
-            "lmstudio_local": false,
-            "llamacpp_local": false,
-            "localai_local": false,
+            "lmstudio_local": true,
+            "llamacpp_local": true,
+            "localai_local": true,
             "webllm_browser": true,
             "aihorde_text": true,
-            "groq": false,
-            "gemini": false,
-            "openrouter": false,
-            "huggingface": false,
-            "mistral": false,
-            "cloudflare": false,
-            "vercel_gateway": false,
-            "nvidia_nim": false,
-            "ollama_cloud": false,
-            "pollinations": false,
-            "custom_openai": false
+            "groq": true,
+            "gemini": true,
+            "openrouter": true,
+            "huggingface": true,
+            "mistral": true,
+            "cloudflare": true,
+            "vercel_gateway": true,
+            "nvidia_nim": true,
+            "ollama_cloud": true,
+            "pollinations": true,
+            "custom_openai": true
         },
         "keys": {
             "aihorde_text": "",
@@ -96,7 +96,7 @@
         "figma": {
             "client_id": "",
             "client_secret": "",
-            "redirect_uri": "",
+            "redirect_uri": "https://ai.63.lv/",
             "scopes": "current_user:read,file_content:read,file_metadata:read,projects:read,folders:read",
             "team_id": "1302775943917338214"
         }
@@ -136,12 +136,15 @@
         "aihorde_steps": 16,
         "unsplash_access_key": "",
         "pexels_api_key": "",
-        "pixabay_api_key": ""
+        "pixabay_api_key": "",
+        "speed_mode": "fast",
+        "aihorde_queue_limit": 45,
+        "web_image_cache_ttl": 900
     },
     "security": {
-        "hcaptcha_enabled": false,
-        "hcaptcha_sitekey": "",
-        "hcaptcha_secret": ""
+        "hcaptcha_enabled": true,
+        "hcaptcha_sitekey": "6b925e18-ce34-49cc-b7a0-ad2e60d69424",
+        "hcaptcha_secret": "ES_3d69dad959cd41929744904cdc8c9954"
     },
     "ui": {
         "language": "en",
