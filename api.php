@@ -52,10 +52,10 @@ try {
  if($action==='image_compose_save'){$in=aih_json_input();$data=trim((string)($in['data_url']??''));if($data==='')aih_json(['ok'=>false,'error'=>'Composed image data is empty'],422);$res=aih_save_composed_data_url($data,(string)($in['prompt']??''));aih_json($res,!empty($res['ok'])?200:(int)($res['code']??422));}
  if($action==='image_start'){
    $in=aih_json_input();$prompt=trim((string)($in['prompt']??''));if($prompt==='')aih_json(['ok'=>false,'error'=>'Prompt is empty'],422);$s=aih_settings();$provider=trim((string)($in['provider']??($s['images']['provider']??'auto')))?:'auto';
-   $res=aih_image_start($prompt,$provider,$s);aih_json($res,!empty($res['ok'])?200:503);
+   if(session_status()===PHP_SESSION_ACTIVE)session_write_close();$res=aih_image_start($prompt,$provider,$s);aih_json($res,!empty($res['ok'])?200:503);
  }
  if($action==='image_status'){
-   $in=aih_json_input();$provider=trim((string)($in['provider_id']??''));$requestId=trim((string)($in['request_id']??''));if($provider!=='aihorde')aih_json(['ok'=>false,'error'=>'Unsupported asynchronous image provider'],422);$res=aih_aihorde_status($requestId,aih_settings());$code=!empty($res['ok'])?200:((int)($res['code']??0)===422?422:503);aih_json($res,$code);
+   $in=aih_json_input();$provider=trim((string)($in['provider_id']??''));$requestId=trim((string)($in['request_id']??''));if($provider!=='aihorde')aih_json(['ok'=>false,'error'=>'Unsupported asynchronous image provider'],422);$s=aih_settings();if(session_status()===PHP_SESSION_ACTIVE)session_write_close();$res=aih_aihorde_status($requestId,$s);$code=!empty($res['ok'])?200:((int)($res['code']??0)===422?422:503);aih_json($res,$code);
  }
  if($action==='image_cancel'){
    $in=aih_json_input();$provider=trim((string)($in['provider_id']??''));$requestId=trim((string)($in['request_id']??''));if($provider!=='aihorde')aih_json(['ok'=>false,'error'=>'Unsupported asynchronous image provider'],422);aih_json(aih_aihorde_cancel($requestId));

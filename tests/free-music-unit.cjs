@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+require('../assets/free-studio.js');
+const {compose,wav}=global.AIHFreeMusic;
+const a=compose({seed:63,seconds:2}),b=compose({seed:63,seconds:2}),c=compose({seed:64,seconds:2});
+assert.deepEqual(a,b);assert.notDeepEqual(a.samples,c.samples);
+assert.equal(a.samples.length,44100);assert.ok(a.samples.some(x=>x!==0));
+assert.ok(a.samples.every(x=>Number.isFinite(x)&&Math.abs(x)<=.95));
+assert.equal(a.samples[0],0);assert.equal(a.samples.at(-1),0);
+const bytes=wav(a),v=new DataView(bytes);assert.equal(Buffer.from(bytes).subarray(0,4).toString(),'RIFF');assert.equal(v.getUint32(24,true),22050);assert.equal(v.getUint32(40,true),88200);
+assert.equal(compose({seconds:999}).samples.length,16*22050);
+console.log('PASS deterministic music, variation, amplitude, fade, duration cap and PCM WAV header');

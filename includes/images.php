@@ -106,6 +106,7 @@ function aih_image_region_host(string $region): string {
 }
 
 function aih_image_provider_configured(string $id,array $s): bool {
+    if(!aih_free_provider_allowed($id))return false;
     $images=$s['images']??[];
     $cloudflareAccount=aih_connection_value($s,'cloudflare',['cloudflare_account_id','account_id'],['AIH_CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_ACCOUNT_ID']);
     $cloudflareKey=aih_connection_value($s,'cloudflare',['cloudflare_api_token','api_token'],['AIH_CLOUDFLARE_API_TOKEN','CLOUDFLARE_API_TOKEN','CF_API_TOKEN']);
@@ -491,19 +492,7 @@ function aih_aihorde_queue_limit(array $settings): int { $mode=aih_image_speed_m
 
 function aih_image_prompt_order(array $order,string $prompt,string $requested,array $settings=[]): array {
     if($requested!=='auto')return $order;
-    $composer=aih_web_image_composer_meta($prompt);
-    if(!empty($composer['auto'])&&in_array('free_web',$order,true)&&in_array('aihorde',$order,true)){
-        $mode=aih_image_speed_mode($settings);
-        $order=array_values(array_filter($order,fn($id)=>!in_array($id,['aihorde','free_web'],true)));
-        if($mode==='quality'){$order[]='aihorde';$order[]='free_web';}else{$order[]='free_web';$order[]='aihorde';}
-        return $order;
-    }
-    if(!aih_image_prompt_prefers_generation($prompt))return $order;
-    if(!in_array('aihorde',$order,true)||!in_array('free_web',$order,true))return $order;
-    $order=array_values(array_filter($order,fn($id)=>$id!=='free_web'));
-    $pos=array_search('aihorde',$order,true);
-    array_splice($order,$pos===false?count($order):(int)$pos+1,0,['free_web']);
-    return $order;
+    return array_values(array_filter($order, fn($id)=>$id!=='free_web' && aih_free_provider_allowed((string)$id)));
 }
 
 function aih_card_background_prompt(string $prompt): string {
@@ -527,6 +516,7 @@ function aih_aihorde_quality_prompt(string $prompt): string {
 }
 
 function aih_image_call(string $id,string $prompt,array $s): array {
+    if(!aih_free_provider_allowed($id))return aih_free_blocked();
     $images=$s['images']??[];$p=$s['providers']??[];$keys=$p['keys']??[];
     if($id==='free_web')return aih_web_image_search($prompt,12,$s);
     if($id==='sdwebui'){
@@ -756,7 +746,8 @@ function aih_aihorde_status(string $requestId,array $s): array {
     if(empty($j['done']))return $progress;
     $status=aih_http('GET','https://aihorde.net/api/v2/generate/status/'.rawurlencode($requestId),null,['Accept: application/json','Client-Agent: '.$client],30);
     if($status['code']===429||$status['code']===0||$status['code']>=500){$progress['pending']=true;$progress['temporary']=true;$progress['retry_after']=5;return $progress;}
-    $sj=json_decode((string)$status['body'],true);$generation=is_array($sj)?($sj['generations'][0]??[]):[];if(is_array($generation)&&aih_aihorde_generation_censored($generation))return ['ok'=>false,'code'=>422,'error'=>'AI Horde worker censored this result. This can be a false positive on SFW prompts; retry or choose Free web images (multi-source) for real-world/reference photography.','headers'=>$status['headers']??[],'censored'=>true];$img=is_array($generation)?trim((string)($generation['img']??'')):'';
+    if($status['code']===0||$status['code']===429||$status['code']>=500)return array_merge($progress,['pending'=>true,'temporary'=>true,'retry_after'=>5]);
+    $sj=json_decode((string)$status['body'],true);if($status['code']>=200&&$status['code']<300&&!is_array($sj))return array_merge($progress,['pending'=>true,'temporary'=>true,'retry_after'=>5]);$generation=is_array($sj)?($sj['generations'][0]??[]):[];if(is_array($generation)&&aih_aihorde_generation_censored($generation))return ['ok'=>false,'code'=>422,'error'=>'AI Horde worker censored this result. This can be a false positive on SFW prompts; retry or choose Free web images (multi-source) for real-world/reference photography.','headers'=>$status['headers']??[],'censored'=>true];$img=is_array($generation)?trim((string)($generation['img']??'')):'';
     if($status['code']>=200&&$status['code']<300&&$img!==''){
         if(preg_match('#^https?://#i',$img))$saved=aih_image_download_url($img);else{$raw=preg_replace('#^data:image/[^;]+;base64,#','',$img);$bin=base64_decode((string)$raw,true);$saved=$bin===false?['ok'=>false,'code'=>0,'error'=>'AI Horde returned invalid image data','headers'=>[]]:aih_image_save_bytes($bin,'image/webp');}
         if(!empty($saved['ok']))return ['ok'=>true,'pending'=>false,'file'=>$saved['file'],'provider'=>'AI Horde · anonymous community queue','provider_id'=>'aihorde','request_id'=>$requestId,'model'=>(string)($generation['model']??''),'seed'=>(string)($generation['seed']??'')];
@@ -767,8 +758,9 @@ function aih_aihorde_status(string $requestId,array $s): array {
 }
 
 function aih_image_start(string $prompt,string $requested='auto',?array $settings=null): array {
-    $settings=$settings??aih_settings();$catalog=aih_image_catalog();$images=$settings['images']??[];$state=aih_provider_state();$tried=[];
+    $settings=aih_free_settings($settings??aih_settings());$catalog=aih_image_catalog();$images=$settings['images']??[];$state=aih_provider_state();$tried=[];
     $order=is_array($images['order']??null)?$images['order']:['sdwebui','comfyui','cloudflare_image','alibaba_qwen_image','huggingface_image','siliconflow_image','pollinations','free_web','aihorde'];
+    if($requested!=='auto'&&!aih_free_provider_allowed($requested))return aih_free_blocked();
     if($requested!=='auto')$order=[$requested];
     else $order=aih_image_prompt_order($order,$prompt,$requested,$settings);
     foreach($order as$id){
@@ -787,24 +779,9 @@ function aih_image_start(string $prompt,string $requested='auto',?array $setting
         elseif($code>=500){$until=time()+120;$entry['status']='temporary_error';}
         if($until>0)$entry['until']=$until;aih_mark_provider_state($stateId,['last_error'=>'HTTP '.$code.' '.substr((string)($res['error']??''),0,160),'cooldown_until'=>$until]);$tried[]=$entry;
     }
-    return ['ok'=>false,'error'=>'No image provider could answer. Local SD/Forge and ComfyUI need a reachable local server; configured cloud providers are tried next; ordinary photo/reference prompts use free web search before AI Horde, while explicitly stylised generation can try AI Horde first. Puter is not used automatically for images.','tried'=>$tried,'provider_catalog'=>$catalog];
+    return ['ok'=>false,'error'=>'Free image generation is temporarily unavailable. AI Horde may be busy; retry later or explicitly choose Free web images to search existing media. No paid API was called.','tried'=>$tried,'provider_catalog'=>$catalog];
 }
 
 function aih_image_generate(string $prompt,string $requested='auto',?array $settings=null): array {
-    $settings=$settings??aih_settings();$catalog=aih_image_catalog();$images=$settings['images']??[];$state=aih_provider_state();$tried=[];
-    $order=is_array($images['order']??null)?$images['order']:['sdwebui','comfyui','cloudflare_image','alibaba_qwen_image','huggingface_image','siliconflow_image','pollinations','free_web','aihorde'];
-    if($requested!=='auto')$order=[$requested];
-    else $order=aih_image_prompt_order($order,$prompt,$requested,$settings);
-    foreach($order as $id){$id=(string)$id;if(!isset($catalog[$id]))continue;$stateId=aih_image_state_id($id);$cool=(int)($state[$stateId]['cooldown_until']??0);if($cool>time()){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'cooldown','until'=>$cool];continue;}
-        if(!aih_image_provider_configured($id,$settings)){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'not_configured'];continue;}
-        if($id==='free_web'){$tried[]=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'requires_v062_ui'];continue;}
-        $res=aih_image_call($id,$prompt,$settings);if(!empty($res['ok'])){aih_mark_provider_state($stateId,['last_ok'=>time(),'last_error'=>'','cooldown_until'=>0]);return ['ok'=>true,'file'=>$res['file'],'provider'=>$catalog[$id]['name'],'provider_id'=>$id,'tried'=>$tried];}
-        $code=(int)($res['code']??0);$entry=['id'=>$id,'name'=>$catalog[$id]['name'],'status'=>'failed','code'=>$code,'error'=>substr((string)($res['error']??''),0,220)];$until=0;
-        if($code===429){$until=time()+aih_retry_seconds($res['headers']??[],900);$entry['status']='rate_limited';}
-        elseif(in_array($code,[401,402,403],true)){$until=time()+3600;$entry['status']='auth_or_quota';}
-        elseif($code===0){$until=time()+300;$entry['status']='unavailable';}
-        elseif($code>=500){$until=time()+300;$entry['status']='temporary_error';}
-        if($until>0)$entry['until']=$until;aih_mark_provider_state($stateId,['last_error'=>'HTTP '.$code.' '.substr((string)($res['error']??''),0,160),'cooldown_until'=>$until]);$tried[]=$entry;
-    }
-    return ['ok'=>false,'error'=>'No image provider completed synchronously. Use the asynchronous image route for AI Horde queues; local SD/Forge and ComfyUI remain the no-cloud-quota options. Puter is not used automatically for images.','tried'=>$tried,'provider_catalog'=>$catalog];
+    return aih_image_start($prompt,$requested,$settings);
 }

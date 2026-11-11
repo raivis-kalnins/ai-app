@@ -227,6 +227,7 @@ function aih_select_ollama_model(string $chatUrl,string $task='chat',string $fal
 }
 
 function aih_provider_call(string $id,array $messages,array $settings,string $task='chat'): array {
+    if(!aih_free_provider_allowed($id))return aih_free_blocked();
     $p=$settings['providers']??[]; $keys=$p['keys']??[]; $models=$p['models']??[]; $model=(string)($models[$id]??'');
     if(in_array($id,['puter','webllm_browser'],true))return ['ok'=>false,'code'=>0,'error'=>'Client-side provider','headers'=>[]];
     if($id==='ollama_local'){$url=(string)($p['ollama_local_url']??'http://127.0.0.1:11434/v1/chat/completions');if($model===''||strtolower($model)==='auto')$model=aih_select_ollama_model($url,$task,'qwen3:8b');$r=aih_openai_call($id,$url,'',$model,$messages,[],120);$r['model']=$model;return $r;}
@@ -267,7 +268,7 @@ function aih_provider_call(string $id,array $messages,array $settings,string $ta
 }
 
 function aih_ai_chat(array $messages,?array $settings=null,string $task='chat'): array {
-    $settings=$settings??aih_settings();$catalog=aih_provider_catalog();$p=$settings['providers']??[];$order=$p['order']??array_keys($catalog);$enabled=$p['enabled']??[];$keys=$p['keys']??[];$state=aih_provider_state();$tried=[];$clientFallbacks=[];
+    $settings=aih_free_settings($settings??aih_settings());$catalog=aih_provider_catalog();$p=$settings['providers']??[];$order=$p['order']??array_keys($catalog);$enabled=$p['enabled']??[];$keys=$p['keys']??[];$state=aih_provider_state();$tried=[];$clientFallbacks=[];
     foreach($order as $id){
         if(empty($enabled[$id])||!isset($catalog[$id]))continue;
         if(!empty($catalog[$id]['client_side'])){$clientFallbacks[]=$id;$tried[]=['id'=>$id,'status'=>'client_side'];continue;}
@@ -286,7 +287,7 @@ function aih_ai_chat(array $messages,?array $settings=null,string $task='chat'):
     }
     return [
         'ok'=>false,
-        'error'=>'No server-side provider answered. Auto also includes the free AI Horde community queue; the browser can then try WebLLM and only use Puter while free allowance remains.',
+        'error'=>'No server-side provider answered. Auto also includes the free AI Horde community queue; the browser can then try WebLLM. Metered APIs are disabled in this cPanel edition.',
         'tried'=>$tried,
         'client_fallbacks'=>$clientFallbacks,
     ];
@@ -294,7 +295,7 @@ function aih_ai_chat(array $messages,?array $settings=null,string $task='chat'):
 
 
 function aih_ai_compare(array $messages,?array $settings=null,int $max=3): array {
-    $settings=$settings??aih_settings();$catalog=aih_provider_catalog();$p=$settings['providers']??[];$order=$p['order']??array_keys($catalog);$enabled=$p['enabled']??[];$keys=$p['keys']??[];$state=aih_provider_state();$answers=[];$tried=[];
+    $settings=aih_free_settings($settings??aih_settings());$catalog=aih_provider_catalog();$p=$settings['providers']??[];$order=$p['order']??array_keys($catalog);$enabled=$p['enabled']??[];$keys=$p['keys']??[];$state=aih_provider_state();$answers=[];$tried=[];
     foreach($order as $id){
         if(count($answers)>=$max)break;
         if(empty($enabled[$id])||!isset($catalog[$id])||!empty($catalog[$id]['client_side']))continue;
