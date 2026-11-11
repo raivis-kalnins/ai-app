@@ -66,21 +66,6 @@ function ib_forge(array $p, int $seed): ?string {
   $j = json_decode($r, true);
   return ($c === 200 && !empty($j['images'][0])) ? ib_save(base64_decode($j['images'][0])) : null;
 }
-function ib_cloudflare(array $p, int $seed): ?string {
-  $acc = ib_cfg('CF_ACCOUNT_ID'); $tok = ib_cfg('CF_API_TOKEN');
-  if (!$acc || !$tok) return null;
-  [$c, $r] = ib_http("https://api.cloudflare.com/client/v4/accounts/$acc/ai/run/@cf/bytedance/stable-diffusion-xl-lightning",
-    'POST', ["Authorization: Bearer $tok", 'Content-Type: application/json'],
-    json_encode(['prompt' => $p['prompt'], 'negative_prompt' => $p['neg'], 'width' => $p['w'], 'height' => $p['h'], 'num_steps' => 8, 'seed' => $seed]));
-  return $c === 200 ? ib_save($r) : null;
-}
-function ib_pollinations(array $p, int $seed): ?string {
-  $q = http_build_query(['width' => $p['w'], 'height' => $p['h'], 'seed' => $seed, 'model' => 'flux', 'nologo' => 'true']);
-  $key = ib_cfg('POLLINATIONS_KEY');
-  [$c, $r] = ib_http('https://image.pollinations.ai/prompt/' . rawurlencode($p['prompt']) . '?' . $q, 'GET',
-    $key ? ["Authorization: Bearer $key"] : [], null, 120);
-  return $c === 200 ? ib_save($r) : null;
-}
 function ib_horde_submit(array $p, int $seed, int $n): ?string {
   $key = ib_cfg('HORDE_KEY') ?: '0000000000';
   [$c, $r] = ib_http('https://aihorde.net/api/v2/generate/async', 'POST',
@@ -98,7 +83,9 @@ function ib_horde_status(string $id): array {
   if (!preg_match('/^[a-f0-9\-]{20,64}$/i', $id)) return ['status' => 'error', 'error' => 'Bad job id'];
   [$c, $r] = ib_http("https://aihorde.net/api/v2/generate/check/$id", 'GET', ['Client-Agent: free-ai-hub:0.8:raivis'], null, 20);
   $j = json_decode($r, true);
+  if ($c===0 || $c===429 || $c>=500 || ($c===200 && !is_array($j))) return ['status'=>'queued','temporary'=>true,'wait'=>0];
   if ($c !== 200 || !$j) return ['status' => 'error', 'error' => 'Horde check failed'];
+  if (!empty($j['faulted'])) return ['status'=>'error','error'=>'Horde generation faulted'];
   if (empty($j['done'])) return ['status' => 'queued', 'queue' => $j['queue_position'] ?? 0, 'wait' => $j['wait_time'] ?? 0];
   [$c, $r] = ib_http("https://aihorde.net/api/v2/generate/status/$id", 'GET', ['Client-Agent: free-ai-hub:0.8:raivis'], null, 30);
   $j = json_decode($r, true);
@@ -125,15 +112,16 @@ function ib_generate(array $in): array {
   [[$w, $h], [$hw, $hh]] = IB_SIZES[$asp];
   $p = ['prompt' => trim($raw . ', ' . IB_STYLES[$style][0], ' ,'), 'neg' => $neg, 'w' => $w, 'h' => $h, 'hw' => $hw, 'hh' => $hh];
 
-  $order = $prov === 'auto' ? ['forge', 'cloudflare', 'pollinations', 'horde'] : [$prov];
+  $order = $prov === 'auto' ? ['forge', 'horde'] : [$prov];
   $tried = [];
   foreach ($order as $o) {
+    if (!in_array($o, ['forge','horde'], true)) return ['status'=>'error','error'=>'Provider blocked by no-paid-API policy'];
     if ($o === 'horde') {
       $job = ib_horde_submit($p, $seed, $n);
       if ($job) return ['status' => 'queued', 'job' => $job, 'provider' => 'horde', 'seed' => $seed];
       $tried[] = 'horde'; continue;
     }
-    $fn = ['forge' => 'ib_forge', 'cloudflare' => 'ib_cloudflare', 'pollinations' => 'ib_pollinations'][$o] ?? null;
+    $fn = ['forge' => 'ib_forge'][$o] ?? null;
     if (!$fn) continue;
     $files = [];
     for ($i = 0; $i < $n; $i++) { if ($f = $fn($p, $seed + $i)) $files[] = $f; else break; }

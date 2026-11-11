@@ -28,6 +28,7 @@ const textFrom=r=>{
   return String(c||'');
 };
 async function ensure(){
+  if(document.body.dataset.freeOnly==='1')throw new Error('Puter is disabled by the no-paid-API policy.');
   if(!window.puter?.auth)throw new Error('Puter.js could not load.');
   if(!window.puter.auth.isSignedIn())await window.puter.auth.signIn({attempt_temp_user_creation:true});
   return window.puter.auth.getUser?.();

@@ -40,11 +40,35 @@ function setBtn(btn,busy,text){if(!btn)return;btn.disabled=busy;if(text!==undefi
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const imageQueueLabel=j=>{const bits=['AI Horde queued'];if(j?.model)bits.push(j.model);const wait=Number(j?.wait_time||0),pos=Number(j?.queue_position||0);if(wait>0)bits.push(wait<90?'~'+Math.max(5,Math.round(wait/5)*5)+' sec':'~'+Math.max(1,Math.ceil(wait/60))+' min');if(pos>0)bits.push('position '+pos);if(j?.queue_limit&&wait>j.queue_limit)bits.push('switching to faster source');if(j?.temporary)bits.push('status retry');return bits.join(' · ')};
 async function generateServerImage(prompt,provider='auto',onProgress=null){
-  const first=await api('image_start',{provider,prompt});if(!first.pending)return first;const tried=Array.isArray(first.tried)?first.tried:[];let job=first;onProgress?.(job);const deadline=Date.now()+30*60*1000;
-  while(Date.now()<deadline){await sleep(Math.max(2200,Math.min(8000,Number(job.retry_after||0)*1000||3000)));const next=await api('image_status',{provider_id:job.provider_id,request_id:job.request_id});job={...job,...next};onProgress?.(job);if(!job.pending){job.tried=tried;return job}const limit=Number(job.queue_limit||0),wait=Number(job.wait_time||0);if(limit>0&&wait>limit){await api('image_cancel',{provider_id:job.provider_id,request_id:job.request_id}).catch(()=>{});onProgress?.({...job,queue_limit:limit});if(provider==='auto'){const fast=await api('image_start',{provider:'free_web',prompt});fast.tried=[...tried,{id:'aihorde',name:'AI Horde · anonymous community queue',status:'queue_skipped',wait_time:wait,queue_position:Number(job.queue_position||0)}];return fast}const err=Object.assign(new Error('AI Horde queue is too long for Fast mode ('+Math.max(1,Math.ceil(wait/60))+' min). Skipped instead of waiting; choose Auto/free web, Local ComfyUI/SD, or Quality mode if you want to wait.'),{data:{...job,tried:[...tried,{id:'aihorde',name:'AI Horde · anonymous community queue',status:'queue_skipped',wait_time:wait,queue_position:Number(job.queue_position||0)}]}});throw err}}
-  const err=Object.assign(new Error('AI Horde accepted the image but it is still queued after 30 minutes. Request '+String(job.request_id||'')+'. Local ComfyUI or Stable Diffusion/Forge is the no-cloud-quota option for immediate generation.'),{data:{...job,tried}});throw err;
+  const storageKey='aih_pending_image_v080';
+  let saved;try{saved=JSON.parse(sessionStorage.getItem(storageKey)||'null')}catch(_){}
+  let job=saved&&saved.prompt===prompt&&saved.provider===provider?saved.job:null;
+  if(!job){job=await api('image_start',{provider,prompt});if(!job.pending)return job}
+  const remember=()=>{try{sessionStorage.setItem(storageKey,JSON.stringify({prompt,provider,job}))}catch(_){}};
+  const forget=()=>{try{sessionStorage.removeItem(storageKey)}catch(_){}};
+  remember();const tried=Array.isArray(job.tried)?job.tried:[];
+  const notice=document.createElement('div');notice.className='alert';notice.setAttribute('role','status');
+  const label=document.createElement('span'),cancel=document.createElement('button');cancel.type='button';cancel.className='button ghost';cancel.textContent=lang==='lv'?'Atcelt ģenerēšanu':'Cancel generation';notice.append(label,cancel);(qs('main')||document.body).prepend(notice);
+  let cancelled=false;
+  cancel.onclick=async()=>{cancel.disabled=true;try{await api('image_cancel',{provider_id:job.provider_id,request_id:job.request_id});cancelled=true;forget()}catch(e){label.textContent=e.message;cancel.disabled=false}};
+  const deadline=Date.now()+30*60*1000;
+  try{
+    while(Date.now()<deadline){
+      if(cancelled)throw new Error(lang==='lv'?'Ģenerēšana atcelta.':'Generation cancelled.');
+      label.textContent=(lang==='lv'?'AI Horde rinda: ':'AI Horde queue: ')+Number(job.queue_position||0)+' · '+Math.ceil(Number(job.wait_time||0)/60)+' min. ';
+      onProgress?.(job);
+      await sleep(Math.max(3000,Math.min(10000,Number(job.retry_after||0)*1000||4000)));
+      if(cancelled)throw new Error(lang==='lv'?'Ģenerēšana atcelta.':'Generation cancelled.');
+      let next;
+      try{next=await api('image_status',{provider_id:job.provider_id,request_id:job.request_id})}
+      catch(e){if(e.data?.ok===false){forget();throw e}label.textContent=(lang==='lv'?'Statuss īslaicīgi nav pieejams. Uzdevums saglabāts.':'Status temporarily unavailable. Job preserved.');continue}
+      job={...job,...next};remember();
+      if(!job.pending){forget();job.tried=tried;return job}
+    }
+    throw new Error(lang==='lv'?'Uzdevums vēl ir rindā. Nosūti to pašu pieprasījumu, lai turpinātu pārbaudi bez jaunas ģenerēšanas.':'Still queued. Submit the same prompt to resume checking without creating another job.');
+  }finally{notice.remove()}
 }
-async function ensurePuter(){if(window.AIHPuterRouter?.ensure)return window.AIHPuterRouter.ensure();if(!window.puter?.auth)throw new Error('Puter.js could not load.');if(!window.puter.auth.isSignedIn())await window.puter.auth.signIn({attempt_temp_user_creation:true});return window.puter.auth.getUser?.()}
+async function ensurePuter(){if(document.body.dataset.freeOnly==='1')throw new Error('Paid/allowance APIs are disabled. Use the free music and clip studio below.');if(window.AIHPuterRouter?.ensure)return window.AIHPuterRouter.ensure();if(!window.puter?.auth)throw new Error('Puter.js could not load.');if(!window.puter.auth.isSignedIn())await window.puter.auth.signIn({attempt_temp_user_creation:true});return window.puter.auth.getUser?.()}
 function mediaSrc(result){if(!result)return'';if(typeof result==='string')return result;return result?.src||result?.url||result?.data?.url||''}
 function appendMedia(target,result,kind='image',alt=''){
   if(!target)return;target.innerHTML='';
@@ -338,7 +362,7 @@ if(page==='search'){
 if(page==='images'){
   const type=qs('#mediaType'),provider=qs('#mediaProvider'),model=qs('#mediaModel'),form=qs('#mediaForm'),out=qs('#mediaOutput');
   async function loadImageModels(){if(!window.AIHPuterRouter||provider?.value!=='puter'||type?.value!=='image')return;try{const rows=await window.AIHPuterRouter.listImageModels();const current=document.body.dataset.puterImageModel||model.value||'auto';window.AIHPuterRouter.fillSelect(model,rows,t('auto_best_model'));if([...model.options].some(o=>o.value===current))model.value=current}catch(_){}}
-  const sync=()=>{const video=type?.value==='video';qsa('option',provider).forEach(o=>{if(video)o.disabled=!['auto','puter'].includes(o.value);else o.disabled=o.value==='puter'});if(video&&!['auto','puter'].includes(provider.value))provider.value='auto';if(!video&&provider.value==='puter')provider.value='auto';const puterBtn=qs('#mediaPuterConnect');if(puterBtn)puterBtn.hidden=!video;if(provider?.value!=='puter'){model.disabled=true;model.innerHTML='<option value="auto">'+esc(t('provider_default'))+'</option>'}else{model.disabled=false;const v=document.body.dataset.puterVideoModel||'auto';model.innerHTML='<option value="auto">'+esc(t('auto_best_model'))+'</option>';if(v!=='auto'){const o=document.createElement('option');o.value=v;o.textContent=v;model.appendChild(o);model.value=v}}};
+  const sync=()=>{if(document.body.dataset.freeOnly==='1'){qsa('option',type).forEach(o=>{if(o.value==='video')o.disabled=true});if(type.value==='video')type.value='image';qsa('option',provider).forEach(o=>o.disabled=!['auto','sdwebui','comfyui','aihorde','free_web'].includes(o.value));if(provider.selectedOptions[0]?.disabled)provider.value='auto';const b=qs('#mediaPuterConnect');if(b)b.hidden=true;model.disabled=true;return}const video=type?.value==='video';qsa('option',provider).forEach(o=>{if(video)o.disabled=!['auto','puter'].includes(o.value);else o.disabled=o.value==='puter'});if(video&&!['auto','puter'].includes(provider.value))provider.value='auto';if(!video&&provider.value==='puter')provider.value='auto';const puterBtn=qs('#mediaPuterConnect');if(puterBtn)puterBtn.hidden=!video;if(provider?.value!=='puter'){model.disabled=true;model.innerHTML='<option value="auto">'+esc(t('provider_default'))+'</option>'}else{model.disabled=false;const v=document.body.dataset.puterVideoModel||'auto';model.innerHTML='<option value="auto">'+esc(t('auto_best_model'))+'</option>';if(v!=='auto'){const o=document.createElement('option');o.value=v;o.textContent=v;model.appendChild(o);model.value=v}}};
   sync();type?.addEventListener('change',sync);provider?.addEventListener('change',sync);
   qs('#mediaPuterConnect')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;try{const u=await ensurePuter();await loadImageModels();out.innerHTML='<div class="alert success">'+esc(t('connected'))+': Puter '+esc(u?.username||'')+(type?.value==='image'?' · '+Math.max(0,model.options.length-1)+' image models':'')+'</div>'}catch(err){out.innerHTML='<div class="alert error">'+esc(err.message)+'</div>'}finally{b.disabled=false}});
   form?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(form),mediaType=f.get('media_type'),prov=f.get('provider'),selectedModel=String(f.get('media_model')||'auto'),prompt=String(f.get('prompt')||'').trim(),btn=form.querySelector('button[type="submit"]');if(!prompt)return;setBtn(btn,true,t('generating'));out.innerHTML='<p class="muted">'+esc(t('generating'))+'…</p>';

@@ -1,11 +1,10 @@
 <?php
 declare(strict_types=1);
 
-const AIH_VERSION = '0.7.3';
-// PRIVATE ai.63.lv release: site-specific bcrypt seed (not a plaintext password).
-// Seed is used only when a saved owner password is missing or unusable.
-// Keep this personalized package out of public Git repositories.
-const AIH_PRIVATE_OWNER_HASH = '$2y$12$vd1YtbKX1UVCxMBmzNeG3u5G5SpIXoEi/.x6VUyGOXbpcveRcwMga';
+const AIH_VERSION = '0.8.0';
+require_once __DIR__ . '/free-policy.php';
+// Public releases never contain a shared owner credential.
+const AIH_PRIVATE_OWNER_HASH = '';
 const AIH_ROOT = __DIR__ . '/..';
 const AIH_STORAGE = AIH_ROOT . '/storage';
 const AIH_UPLOADS = AIH_STORAGE . '/uploads';
@@ -39,8 +38,7 @@ function aih_path(string $bucket, string $name=''): string {
 
 function aih_default_settings(): array {
     $cfg = aih_config();
-    // No manual activation file: private installation hash is included in this
-    // one-site ZIP. Saved valid owner passwords always win during migration.
+    // A saved owner password wins. New installations use explicit owner setup.
     $initialHash = aih_password_hash_usable(AIH_PRIVATE_OWNER_HASH)
         ? AIH_PRIVATE_OWNER_HASH : (string)($cfg['security']['initial_password_hash'] ?? '');
     return [
@@ -367,9 +365,22 @@ function aih_update_json(string $path, callable $fn, mixed $default=[]): mixed {
 
 function aih_settings(): array {
     $v = aih_read_json(AIH_STORAGE.'/settings.json', []);
-    return is_array($v) ? $v : [];
+    return aih_free_settings(is_array($v) ? $v : []);
 }
-function aih_save_settings(array $v): void { aih_write_json(AIH_STORAGE.'/settings.json', aih_migrate_settings($v)); }
+function aih_save_settings(array $v): void {
+    $saved=aih_read_json(AIH_STORAGE.'/settings.json', []);
+    // Runtime policy masks settings; saving unrelated preferences must not erase them.
+    foreach (['brave_search_key','ollama_web_key'] as $key) {
+        if (empty($v['search'][$key]) && isset($saved['search'][$key])) $v['search'][$key]=$saved['search'][$key];
+    }
+    foreach (['sdwebui_url','comfyui_url'] as $key) {
+        if (empty($v['images'][$key]) && isset($saved['images'][$key])) $v['images'][$key]=$saved['images'][$key];
+    }
+    foreach (($saved['providers']['enabled']??[]) as $id=>$enabled) {
+        if (!aih_free_provider_allowed((string)$id)) $v['providers']['enabled'][$id]=$enabled;
+    }
+    aih_write_json(AIH_STORAGE.'/settings.json', aih_migrate_settings($v));
+}
 
 function aih_start_session(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
@@ -542,6 +553,8 @@ function aih_audit(string $event, array $context=[]): void {
     aih_update_json($path,function($rows)use($row){$rows=is_array($rows)?$rows:[];$rows[]=$row;return array_slice($rows,-500);},[]);
 }
 
-aih_bootstrap_storage();
-aih_start_session();
-if(!defined('AIH_SKIP_AUTO_CLEANUP')) aih_cleanup_expired(false);
+if (!(PHP_SAPI === 'cli' && defined('AIH_TEST_NO_BOOTSTRAP'))) {
+    aih_bootstrap_storage();
+    aih_start_session();
+    if(!defined('AIH_SKIP_AUTO_CLEANUP')) aih_cleanup_expired(false);
+}
